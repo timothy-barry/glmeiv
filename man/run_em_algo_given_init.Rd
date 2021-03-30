@@ -59,5 +59,6 @@ generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, cov
 m <- generated_data$m
 g <- generated_data$g
 initial_Ti1s <- (g >= median(g))
-em_res <- run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
+em_res <- run_em_algo_given_init(m, g, m_fam, g_fam,
+covariate_matrix, initial_Ti1s, m_offset, g_offset)
 }

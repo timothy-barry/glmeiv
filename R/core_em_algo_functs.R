@@ -13,7 +13,7 @@
 #'
 #' @return a list containing the following: fit object of M GLM, fit object of G GLM,
 #' fit for pi, number of iterations,full log-likelihood of final model
-#'
+#' @export
 #' @examples
 #' n <- 1000
 #' m_fam <- augment_family_object(poisson())
@@ -28,7 +28,8 @@
 #' m <- generated_data$m
 #' g <- generated_data$g
 #' initial_Ti1s <- (g >= median(g))
-#' em_res <- run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
+#' em_res <- run_em_algo_given_init(m, g, m_fam, g_fam,
+#' covariate_matrix, initial_Ti1s, m_offset, g_offset)
 run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.1, max_it = 50) {
   # verify column names ok
   check_col_names(covariate_matrix)
@@ -107,8 +108,8 @@ run_e_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augm
   fit_pi <- sum(curr_Ti1s)/n
 
   # compute the log-likelihoods
-  m_log_lik <- logLik(fit_m)[1]
-  g_log_lik <- logLik(fit_g)[1]
+  m_log_lik <- stats::logLik(fit_m)[1]
+  g_log_lik <- stats::logLik(fit_g)[1]
   pi_log_lik <- log(1 - fit_pi) * (n - sum(curr_Ti1s)) + log(fit_pi) * sum(curr_Ti1s)
   curr_log_lik <- m_log_lik + g_log_lik + pi_log_lik
 

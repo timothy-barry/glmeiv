@@ -1,3 +1,5 @@
+utils::globalVariables(c("n", "perturbation", "everything"))
+
 #' glmeiv: a glm-oriented variant of the errors-in-variables model.
 #'
 #' GLM-EIV is GLM-oriented variant of the errors-in-variables model. GLM-EIV models the response as
