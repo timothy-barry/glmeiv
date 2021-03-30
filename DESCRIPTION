@@ -1,16 +1,18 @@
 Package: glmeiv
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Title: Implements the GLM-EIV model and method
+Version: 0.0.1
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "Tim",
+           family = "Barry",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to
-    pick a license
+           email = "tbarry2@andrew.cmu.edu")
+Description: GLM-EIV is GLM-oriented variant of the errors-in-variables model. GLM-EIV models the response as a GLM of an unobserved predictor. A noisy version of the predictor is obeserved instead, which itself is modeled as a GLM of the true predictor. glmeiv implements estimation and inference in the GLM-EIV model.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
+Imports: 
+    MASS,
+    dplyr,
+    magrittr

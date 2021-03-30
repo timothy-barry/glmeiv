@@ -1,0 +1,18 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# glmeiv
+
+GLM-EIV is GLM-oriented variant of the errors-in-variables model. GLM-EIV models the response as a GLM of an unobserved predictor. A noisy version of the predictor is observed, which itself is modeled as a GLM of the true predictor. The `glmeiv` package implements estimation and inference in the GLM-EIV model.
