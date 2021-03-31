@@ -15,6 +15,7 @@ augment_family_object <- function(f) {
          "Negative Binomial" = augment_negbinom_family_object(f),
          "gaussian" = augment_gaussian_family_object(f))
   if (is.null(new_f)) stop("Family not recognized. Please use one of the programmed families.")
+  new_f$augmented <- TRUE
   return(new_f)
 }
 

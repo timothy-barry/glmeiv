@@ -35,7 +35,12 @@
 #' fit_m <- glm(formula = generated_data$m ~ ., family = m_fam, data = covariate_matrix_full)
 #' fit_g <- glm(formula = generated_data$g ~ ., family = g_fam, data = covariate_matrix_full)
 generate_data_from_model <- function(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix, m_offset = NULL, g_offset = NULL) {
+  # augment family objects, if necessary
+  if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
+  if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
+  # set offsetsto zero, if necessary
   if (is.null(m_offset)) m_offset <- 0; if (is.null(g_offset)) g_offset <- 0
+  # verify column names ok
   check_col_names(covariate_matrix)
   # sample unobserved binary covariate p
   n <- nrow(covariate_matrix)
@@ -67,4 +72,31 @@ simulate_glm_data <- function(coefs, fam, offsets, X) {
   mu_is <- fam$linkinv(l_is)
   y <- fam$simulate_from_mus(mu_is)
   return(y)
+}
+
+
+#' Get quick simulated data
+#'
+#' Quickly generates simulated data.
+#'
+#' @param n number of examples
+#'
+#' @return a list containing the entries m, g, p, pi, covariate_matrix, m_coef, and g_coef.
+#' @export
+get_quick_simulated_data <- function(n = 1000) {
+  m_fam <- augment_family_object(stats::poisson())
+  g_fam <- augment_family_object(stats::poisson())
+  m_offset <- 0
+  g_offset <- 0
+  pi <- 0.2
+  covariate_matrix <- data.frame(p_mito = stats::runif(n = n, 0, 10),
+                                 lib_size = stats::rpois(n = n, lambda = 1))
+  m_coef <- c(-1, -2, 1, 0.5)
+  g_coef <- c(-1, 2, 1, 0.5)
+  out <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix)
+  out$pi <- pi
+  out$covariate_matrix <- covariate_matrix
+  out$m_coef <- m_coef
+  out$g_coef <- g_coef
+  return(out)
 }

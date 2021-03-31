@@ -6,6 +6,7 @@
 #' @param g_fam augmented family of g
 #' @param covariate_matrix the matrix of covariates; set to NULL if there are no covariates.
 #' @param initial_Ti1s the initial vector of membership probabilities
+#' @param initial_Ti1_matrix a matrix of starting membership probabilities
 #' @param m_offset (optional) offsets for GLM for M
 #' @param g_offset (optional) offsets for GLM for G
 #' @param ep_tol EM convergence threshold
@@ -14,10 +15,11 @@
 #' @return a list containing the following: fit object of M GLM, fit object of G GLM,
 #' fit for pi, number of iterations,full log-likelihood of final model
 #' @export
+#' @name run_em_algo_given_init
 #' @examples
 #' n <- 1000
-#' m_fam <- augment_family_object(poisson())
-#' g_fam <- augment_family_object(poisson())
+#' m_fam <- poisson()
+#' g_fam <- poisson()
 #' m_offset <- g_offset <- NULL
 #' pi <- 0.2
 #' covariate_matrix <- data.frame(p_mito = runif(n = n, 0, 10),
@@ -27,10 +29,19 @@
 #' generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix)
 #' m <- generated_data$m
 #' g <- generated_data$g
+#' # run using single initialization
 #' initial_Ti1s <- (g >= median(g))
 #' em_res <- run_em_algo_given_init(m, g, m_fam, g_fam,
 #' covariate_matrix, initial_Ti1s, m_offset, g_offset)
+#' # run using multiple initializations
+#' initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.1)) %% 2)
+#' em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
+#' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
 run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.1, max_it = 50) {
+  # augment family objects, if necessary
+  if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
+  if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
+
   # verify column names ok
   check_col_names(covariate_matrix)
 
@@ -68,7 +79,7 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
       }
     }
   }
-  out <- list(fit_m = e_step$fit_m, fit_g = e_step$fit_g, fit_pi = e_step$fit_pi, n_iterations = iteration, log_lik = curr_log_lik, converged = converged)
+  out <- list(fit_m = e_step$fit_m, fit_g = e_step$fit_g, fit_pi = e_step$fit_pi, n_iterations = iteration, log_lik = curr_log_lik, converged = converged, n = n)
   return(out)
 }
 
@@ -106,13 +117,11 @@ run_e_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augm
   fit_g <- stats::glm(formula = g_augmented ~ ., data = Xtilde_augmented, family = g_fam,
                       weights = weights, offset = g_offset_augmented)
   fit_pi <- sum(curr_Ti1s)/n
-
   # compute the log-likelihoods
   m_log_lik <- stats::logLik(fit_m)[1]
   g_log_lik <- stats::logLik(fit_g)[1]
   pi_log_lik <- log(1 - fit_pi) * (n - sum(curr_Ti1s)) + log(fit_pi) * sum(curr_Ti1s)
   curr_log_lik <- m_log_lik + g_log_lik + pi_log_lik
-
   # return list of fitted models, as well as current log-likelihood
   out <- list(fit_m = fit_m, fit_g = fit_g, fit_pi = fit_pi, curr_log_lik = curr_log_lik)
   return(out)
@@ -147,7 +156,7 @@ update_membership_probs_factory <- function(m_fam, g_fam, fit_pi) {
   g_log_py_given_mu <- g_fam$log_py_given_mu
   f <- function(m_i, g_i, m_mus_i0, m_mus_i1, g_mus_i0, g_mus_i1) {
     alpha_i0 <- m_log_py_given_mu(m_i, m_mus_i0) + g_log_py_given_mu(g_i, g_mus_i0) + 1 - fit_pi
-    alpha_i1 <-  m_log_py_given_mu(m_i, m_mus_i1) + g_log_py_given_mu(g_i, g_mus_i1) + fit_pi
+    alpha_i1 <- m_log_py_given_mu(m_i, m_mus_i1) + g_log_py_given_mu(g_i, g_mus_i1) + fit_pi
     return(1/(1 + exp(alpha_i0 - alpha_i1)))
   }
   return(f)
