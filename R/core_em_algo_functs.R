@@ -83,7 +83,6 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
   return(out)
 }
 
-
 ##################
 # helper functions
 ##################
@@ -112,11 +111,15 @@ augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset) {
 run_e_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n) {
   weights <- c(1 - curr_Ti1s, curr_Ti1s)
   # fit augmented models
+  fit_pi <- sum(curr_Ti1s)/n
+  if (fit_pi >= 0.5) { # subtract by 1 to ensure label consistency
+    curr_Ti1s <- 1 - curr_Ti1s
+    fit_pi <- sum(curr_Ti1s)/n
+  }
   fit_m <- stats::glm(formula = m_augmented ~ ., data = Xtilde_augmented, family = m_fam,
                       weights = weights, offset = m_offset_augmented)
   fit_g <- stats::glm(formula = g_augmented ~ ., data = Xtilde_augmented, family = g_fam,
                       weights = weights, offset = g_offset_augmented)
-  fit_pi <- sum(curr_Ti1s)/n
   # compute the log-likelihoods
   m_log_lik <- stats::logLik(fit_m)[1]
   g_log_lik <- stats::logLik(fit_g)[1]
