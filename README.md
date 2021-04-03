@@ -8,3 +8,11 @@ GLM-EIV models the response as a GLM of an unobserved predictor. A noisy
 version of the predictor is observed, which itself is modeled as a GLM
 of the true predictor. The `glmeiv` package implements estimation and
 inference in the GLM-EIV model.
+
+# Installation
+
+To install from Github use the following:
+
+``` r
+devtools::install_github("timothy-barry/glmeiv")
+```
