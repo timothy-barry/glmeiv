@@ -1,4 +1,4 @@
-utils::globalVariables(c("n", "perturbation", "everything", "variable"))
+utils::globalVariables(c("n", "perturbation", "everything", "variable", "counts", "..count.."))
 
 #' glmeiv: a glm-oriented variant of the errors-in-variables model.
 #'

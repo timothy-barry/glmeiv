@@ -16,6 +16,3 @@ the best run of the list
 Returns the best run, defined as the run with positive perturbation coefficient for G and
 greatest log-likelihood.
 }
-\examples{
-data <- get_quick_simulated_data()
-}

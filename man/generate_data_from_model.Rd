@@ -12,7 +12,8 @@ generate_data_from_model(
   pi,
   covariate_matrix,
   m_offset = NULL,
-  g_offset = NULL
+  g_offset = NULL,
+  n = NULL
 )
 }
 \arguments{
@@ -32,6 +33,8 @@ and "perturbation," and the other names should coincide with the column names of
 \item{m_offset}{(optional) offsets for M.}
 
 \item{g_offset}{(optional) offsets for G.}
+
+\item{n}{(optional, required if covariate_matrix NULL) the number of samples to generate}
 }
 \value{
 a list containing m, g, and p.

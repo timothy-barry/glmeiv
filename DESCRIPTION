@@ -16,3 +16,6 @@ Imports:
     MASS,
     dplyr,
     magrittr
+Suggests: 
+    ggplot2,
+    cowplot

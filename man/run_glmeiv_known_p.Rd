@@ -13,7 +13,7 @@ run_glmeiv_known_p(
   p,
   m_offset = NULL,
   g_offset = NULL,
-  n_runs = 10,
+  n_runs = 4,
   p_flip = 0.15,
   ep_tol = 0.1,
   max_it = 50
@@ -52,7 +52,7 @@ Run GLM-EIV with known p
 }
 \examples{
 dat <- get_quick_simulated_data(5000)
-em_fit <- run_glmeiv_known_p(m = dat$m, g = dat$g, m_fam = dat$m_fam, g_fam = dat$m_fam,
+em_coefs <- run_glmeiv_known_p(m = dat$m, g = dat$g, m_fam = dat$m_fam, g_fam = dat$m_fam,
 covariate_matrix = dat$covariate_matrix, p = dat$p, m_offset = NULL, g_offset = NULL)
 # dat$m_coef; dat$g_coef; dat$pi
 }
