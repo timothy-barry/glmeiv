@@ -40,6 +40,7 @@ select_best_em_run <- function(em_runs) {
 #' @param p_flip (default 0.15) expected fraction of initial weights to flip in each run
 #' @param ep_tol (detault 0.1) tolerance threshold for EM convergence
 #' @param max_it (default 50) maximum number of EM iterations (per run)
+#' @param alpha (default 0.95) confidence interval level
 #'
 #' @return the best EM run
 #' @export
@@ -49,10 +50,10 @@ select_best_em_run <- function(em_runs) {
 #' em_coefs <- run_glmeiv_known_p(m = dat$m, g = dat$g, m_fam = dat$m_fam, g_fam = dat$m_fam,
 #' covariate_matrix = dat$covariate_matrix, p = dat$p, m_offset = NULL, g_offset = NULL)
 #' # dat$m_coef; dat$g_coef; dat$pi
-run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset = NULL, g_offset = NULL, n_runs = 4, p_flip = 0.15, ep_tol = 0.1, max_it = 50) {
+run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset = NULL, g_offset = NULL, n_runs = 4, p_flip = 0.15, ep_tol = 0.1, max_it = 50, alpha = 0.95) {
   initial_Ti1_matrix <- cbind(p, replicate(n_runs - 1, expr = flip_weights(p, p_flip)))
   em_runs <- run_em_algo_multiple_inits(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, ep_tol = ep_tol, max_it = max_it)
   best_run <- select_best_em_run(em_runs)
-  out <- run_inference_on_em_fit(best_run)
+  out <- run_inference_on_em_fit(best_run, alpha)
   return(out)
 }

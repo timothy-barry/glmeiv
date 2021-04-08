@@ -53,7 +53,7 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
   prev_log_lik <- -Inf
 
   # define augmented responses, offsets, and covariate matrix
-  augmented_inputs <- augment_inputs(covariate_matrix, m, g, m_offset, g_offset)
+  augmented_inputs <- augment_inputs(covariate_matrix, m, g, m_offset, g_offset, n)
 
   # iterate through E and M steps until convergence
   while (!converged) {
@@ -87,7 +87,7 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
 # helper functions
 ##################
 
-augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset) {
+augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
   if (is.null(covariate_matrix)) {
     Xtilde_augmented <- data.frame(perturbation = c(rep(0, n), rep(1, n)))
   } else {

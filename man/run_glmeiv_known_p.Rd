@@ -16,7 +16,8 @@ run_glmeiv_known_p(
   n_runs = 4,
   p_flip = 0.15,
   ep_tol = 0.1,
-  max_it = 50
+  max_it = 50,
+  alpha = 0.95
 )
 }
 \arguments{
@@ -43,6 +44,8 @@ run_glmeiv_known_p(
 \item{ep_tol}{(detault 0.1) tolerance threshold for EM convergence}
 
 \item{max_it}{(default 50) maximum number of EM iterations (per run)}
+
+\item{alpha}{(default 0.95) confidence interval level}
 }
 \value{
 the best EM run
