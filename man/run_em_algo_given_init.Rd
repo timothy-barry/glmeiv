@@ -14,7 +14,7 @@ run_em_algo_multiple_inits(
   initial_Ti1_matrix,
   m_offset,
   g_offset,
-  ep_tol = 0.1,
+  ep_tol = 0.5 * 1e-04,
   max_it = 50
 )
 
@@ -27,7 +27,7 @@ run_em_algo_given_init(
   initial_Ti1s,
   m_offset,
   g_offset,
-  ep_tol = 0.1,
+  ep_tol = 0.5 * 1e-04,
   max_it = 50
 )
 }
@@ -78,8 +78,23 @@ g <- generated_data$g
 initial_Ti1s <- (g >= median(g))
 em_res <- run_em_algo_given_init(m, g, m_fam, g_fam,
 covariate_matrix, initial_Ti1s, m_offset, g_offset)
+
 # run using multiple initializations
 initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.1)) \%\% 2)
 em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
 covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
+
+# harder setting
+covariate_matrix <- NULL
+m_coef <- c(1, -2)
+g_coef <- c(-2, 2)
+generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix, n = n)
+m <- generated_data$m
+g <- generated_data$g
+# run using single initialization
+initial_Ti1s <- (g >= median(g))
+initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.1)) \%\% 2)
+em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
+covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
+select_best_em_run(em_runs)
 }

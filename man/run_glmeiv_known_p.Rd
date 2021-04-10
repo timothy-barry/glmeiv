@@ -15,7 +15,7 @@ run_glmeiv_known_p(
   g_offset = NULL,
   n_runs = 4,
   p_flip = 0.15,
-  ep_tol = 0.1,
+  ep_tol = 0.5 * 1e-04,
   max_it = 50,
   alpha = 0.95
 )

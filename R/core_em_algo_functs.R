@@ -33,11 +33,26 @@
 #' initial_Ti1s <- (g >= median(g))
 #' em_res <- run_em_algo_given_init(m, g, m_fam, g_fam,
 #' covariate_matrix, initial_Ti1s, m_offset, g_offset)
+#'
 #' # run using multiple initializations
 #' initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.1)) %% 2)
 #' em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
 #' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
-run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.1, max_it = 50) {
+#'
+#' # harder setting
+#' covariate_matrix <- NULL
+#' m_coef <- c(1, -2)
+#' g_coef <- c(-2, 2)
+#' generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix, n = n)
+#' m <- generated_data$m
+#' g <- generated_data$g
+#' # run using single initialization
+#' initial_Ti1s <- (g >= median(g))
+#' initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.1)) %% 2)
+#' em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
+#' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
+#' select_best_em_run(em_runs)
+run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, pi = NULL, ep_tol = 0.5 * 1e-4, max_it = 50) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
@@ -51,25 +66,27 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
   converged <- FALSE
   curr_Ti1s <- initial_Ti1s
   prev_log_lik <- -Inf
+  log_liks <- numeric()
 
   # define augmented responses, offsets, and covariate matrix
   augmented_inputs <- augment_inputs(covariate_matrix, m, g, m_offset, g_offset, n)
 
   # iterate through E and M steps until convergence
   while (!converged) {
-    # e step
-    e_step <- run_e_step(curr_Ti1s,
+    # m step
+    m_step <- run_m_step(curr_Ti1s,
                          augmented_inputs$m_augmented, m_fam, augmented_inputs$m_offset_augmented,
                          augmented_inputs$g_augmented, g_fam, augmented_inputs$g_offset_augmented,
                          augmented_inputs$Xtilde_augmented, n)
-    curr_log_lik <- e_step$curr_log_lik
-
-    if (abs(curr_log_lik - prev_log_lik) < ep_tol) {
+    curr_log_lik <- m_step$curr_log_lik
+    log_liks <- c(log_liks, curr_log_lik)
+    curr_tol <- abs(curr_log_lik - prev_log_lik)/min(abs(curr_log_lik), abs(prev_log_lik))
+    if (curr_tol < ep_tol) {
       # convergence acheived
       converged <- TRUE
     } else {
-      # m step
-      curr_Ti1s <- run_m_step(e_step, m, m_fam, g, g_fam, n)
+      # e step
+      curr_Ti1s <- run_e_step(m_step, m, m_fam, g, g_fam, n)
       prev_log_lik <- curr_log_lik
       iteration <- iteration + 1L
       # check iteration limit
@@ -79,7 +96,7 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
       }
     }
   }
-  out <- list(fit_m = e_step$fit_m, fit_g = e_step$fit_g, fit_pi = e_step$fit_pi, n_iterations = iteration, log_lik = curr_log_lik, converged = converged, n = n)
+  out <- list(fit_m = m_step$fit_m, fit_g = m_step$fit_g, fit_pi = m_step$fit_pi, n_iterations = iteration, log_liks = log_liks, log_lik = curr_log_lik, converged = converged, n = n)
   return(out)
 }
 
@@ -108,35 +125,39 @@ augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
 }
 
 
-run_e_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n) {
+run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n) {
   weights <- c(1 - curr_Ti1s, curr_Ti1s)
   # fit augmented models
   fit_pi <- sum(curr_Ti1s)/n
+
   if (fit_pi >= 0.5) { # subtract by 1 to ensure label consistency
     curr_Ti1s <- 1 - curr_Ti1s
     fit_pi <- sum(curr_Ti1s)/n
   }
+
   fit_m <- stats::glm(formula = m_augmented ~ ., data = Xtilde_augmented, family = m_fam,
                       weights = weights, offset = m_offset_augmented)
   fit_g <- stats::glm(formula = g_augmented ~ ., data = Xtilde_augmented, family = g_fam,
                       weights = weights, offset = g_offset_augmented)
+
   # compute the log-likelihoods
   m_log_lik <- stats::logLik(fit_m)[1]
   g_log_lik <- stats::logLik(fit_g)[1]
   pi_log_lik <- log(1 - fit_pi) * (n - sum(curr_Ti1s)) + log(fit_pi) * sum(curr_Ti1s)
   curr_log_lik <- m_log_lik + g_log_lik + pi_log_lik
+
   # return list of fitted models, as well as current log-likelihood
   out <- list(fit_m = fit_m, fit_g = fit_g, fit_pi = fit_pi, curr_log_lik = curr_log_lik)
   return(out)
 }
 
 
-run_m_step <- function(e_step, m, m_fam, g, g_fam, n) {
+run_e_step <- function(m_step, m, m_fam, g, g_fam, n) {
   # compute conditional means
-  m_mus <- compute_conditional_means(e_step$fit_m, m_fam, n)
-  g_mus <- compute_conditional_means(e_step$fit_g, g_fam, n)
+  m_mus <- compute_conditional_means(m_step$fit_m, m_fam, n)
+  g_mus <- compute_conditional_means(m_step$fit_g, g_fam, n)
   # define all relevant variables
-  fit_pi <- e_step$fit_pi
+  fit_pi <- m_step$fit_pi
   m_mus_pert0 <- m_mus$mus_pert0; m_mus_pert1 <- m_mus$mus_pert1
   g_mus_pert0 <- g_mus$mus_pert0; g_mus_pert1 <- g_mus$mus_pert1
   # compute membership probabilities
@@ -158,9 +179,10 @@ update_membership_probs_factory <- function(m_fam, g_fam, fit_pi) {
   m_log_py_given_mu <- m_fam$log_py_given_mu
   g_log_py_given_mu <- g_fam$log_py_given_mu
   f <- function(m_i, g_i, m_mus_i0, m_mus_i1, g_mus_i0, g_mus_i1) {
-    alpha_i0 <- m_log_py_given_mu(m_i, m_mus_i0) + g_log_py_given_mu(g_i, g_mus_i0) + 1 - fit_pi
-    alpha_i1 <- m_log_py_given_mu(m_i, m_mus_i1) + g_log_py_given_mu(g_i, g_mus_i1) + fit_pi
-    return(1/(1 + exp(alpha_i0 - alpha_i1)))
+    quotient <- log(1 - fit_pi) + m_log_py_given_mu(m_i, m_mus_i0) + g_log_py_given_mu(g_i, g_mus_i0) -
+      (log(fit_pi) + m_log_py_given_mu(m_i, m_mus_i1) + g_log_py_given_mu(g_i, g_mus_i1))
+    out <- 1/(exp(quotient) + 1)
+    return(out)
   }
   return(f)
 }

@@ -58,7 +58,8 @@ augment_poisson_family_object <- function(f) {
     f$skewness <- function(mu) mu^(-1/2)
     f$mu.eta.prime <- function(eta) pmax(exp(eta), .Machine$double.eps)
     f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) stats::rpois(1, mu))
-    f$log_py_given_mu <- function(y, mu) y * log(mu) - mu
+    # f$log_py_given_mu <- function(y, mu) y * log(mu) - mu
+    f$log_py_given_mu <- function(y, mu) stats::dpois(x = y, lambda = mu, log = TRUE)
   }
   else stop(get_nonstandard_link_msg())
   return(f)
