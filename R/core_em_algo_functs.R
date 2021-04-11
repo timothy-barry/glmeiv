@@ -40,19 +40,26 @@
 #' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
 #'
 #' # harder setting
+#' n <- 5000
+#' m_fam <- poisson()
+#' g_fam <- poisson()
+#' m_offset <- g_offset <- NULL
+#' pi <- 0.2
 #' covariate_matrix <- NULL
-#' m_coef <- c(1, -2)
+#' m_coef <- c(2, -2)
 #' g_coef <- c(-2, 2)
 #' generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix, n = n)
 #' m <- generated_data$m
 #' g <- generated_data$g
 #' # run using single initialization
-#' initial_Ti1s <- (g >= median(g))
-#' initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.1)) %% 2)
+#' initial_Ti1s <- (g > median(g))
+#' initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.3)) %% 2)
+#' em_run <- run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s,
+#' m_offset, g_offset, pi = NULL, intercept = TRUE)
 #' em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
 #' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
 #' select_best_em_run(em_runs)
-run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, pi = NULL, ep_tol = 0.5 * 1e-4, max_it = 50) {
+run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, pi = NULL, intercept = TRUE, ep_tol = 0.5 * 1e-4, max_it = 50) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
@@ -77,7 +84,7 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
     m_step <- run_m_step(curr_Ti1s,
                          augmented_inputs$m_augmented, m_fam, augmented_inputs$m_offset_augmented,
                          augmented_inputs$g_augmented, g_fam, augmented_inputs$g_offset_augmented,
-                         augmented_inputs$Xtilde_augmented, n)
+                         augmented_inputs$Xtilde_augmented, n, pi, intercept)
     curr_log_lik <- m_step$curr_log_lik
     log_liks <- c(log_liks, curr_log_lik)
     curr_tol <- abs(curr_log_lik - prev_log_lik)/min(abs(curr_log_lik), abs(prev_log_lik))
@@ -125,25 +132,34 @@ augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
 }
 
 
-run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n) {
+run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n, pi, intercept) {
   weights <- c(1 - curr_Ti1s, curr_Ti1s)
-  # fit augmented models
-  fit_pi <- sum(curr_Ti1s)/n
-
-  if (fit_pi >= 0.5) { # subtract by 1 to ensure label consistency
-    curr_Ti1s <- 1 - curr_Ti1s
+  # fit pi (if unknown)
+  if (is.null(pi)) {
     fit_pi <- sum(curr_Ti1s)/n
+    if (fit_pi >= 0.5) { # subtract by 1 to ensure label consistency
+      curr_Ti1s <- 1 - curr_Ti1s
+      fit_pi <- sum(curr_Ti1s)/n
+    }
+  } else {
+    # pi_log_lik <- 0
+    fit_pi <- pi
   }
+  pi_log_lik <- log(1 - fit_pi) * (n - sum(curr_Ti1s)) + log(fit_pi) * sum(curr_Ti1s)
 
-  fit_m <- stats::glm(formula = m_augmented ~ ., data = Xtilde_augmented, family = m_fam,
+  # fit models for m and g
+  m_form <- paste("m_augmented ~ .", if (intercept) "" else "-1") %>% formula
+  fit_m <- stats::glm(formula = m_form, data = Xtilde_augmented, family = m_fam,
                       weights = weights, offset = m_offset_augmented)
-  fit_g <- stats::glm(formula = g_augmented ~ ., data = Xtilde_augmented, family = g_fam,
+
+  g_form <- paste("g_augmented ~ .", if (intercept) "" else "-1") %>% formula
+  fit_g <- stats::glm(formula = g_form, data = Xtilde_augmented, family = g_fam,
                       weights = weights, offset = g_offset_augmented)
 
   # compute the log-likelihoods
   m_log_lik <- stats::logLik(fit_m)[1]
   g_log_lik <- stats::logLik(fit_g)[1]
-  pi_log_lik <- log(1 - fit_pi) * (n - sum(curr_Ti1s)) + log(fit_pi) * sum(curr_Ti1s)
+
   curr_log_lik <- m_log_lik + g_log_lik + pi_log_lik
 
   # return list of fitted models, as well as current log-likelihood

@@ -2,9 +2,9 @@
 
 #' @rdname run_em_algo_given_init
 #' @export
-run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, ep_tol = 0.5 * 1e-4, max_it = 50) {
+run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, pi = NULL, intercept = TRUE, ep_tol = 0.5 * 1e-4, max_it = 50) {
   em_runs <- apply(X = initial_Ti1_matrix, MARGIN = 2, FUN = function(initial_Ti1s) {
-    run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = ep_tol, max_it = max_it)
+    run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, pi, intercept, ep_tol, max_it)
   })
   names(em_runs) <- NULL
   return(em_runs)

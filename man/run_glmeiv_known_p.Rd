@@ -17,7 +17,8 @@ run_glmeiv_known_p(
   p_flip = 0.15,
   ep_tol = 0.5 * 1e-04,
   max_it = 50,
-  alpha = 0.95
+  alpha = 0.95,
+  reduced_output = TRUE
 )
 }
 \arguments{
