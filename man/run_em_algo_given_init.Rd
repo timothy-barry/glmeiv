@@ -101,7 +101,7 @@ generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, cov
 m <- generated_data$m
 g <- generated_data$g
 # run using single initialization
-initial_Ti1s <- (g > median(g))
+initial_Ti1s <- generated_data$p
 initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.3)) \%\% 2)
 em_run <- run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s,
 m_offset, g_offset, pi = NULL, intercept = TRUE)

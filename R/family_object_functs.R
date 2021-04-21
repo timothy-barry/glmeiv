@@ -49,6 +49,7 @@ augment_negbinom_family_object <- function(f) {
     f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) MASS::rnegbin(n = 1, mu = mu, theta = theta))
     f$log_py_given_mu <- function(y, mu) y * log(mu) - y * log(theta + mu) - theta * log(mu + theta)
   } else stop(get_nonstandard_link_msg())
+  f$bayes_classifier <- function(mu0, mu1, pi) (theta * (log(mu0 + theta) - log(mu1 + theta)) + log(pi) - log(1 - pi))/(log(mu0 * (mu1 + theta)) - log(mu1 * (mu0 + theta)))
   return(f)
 }
 
@@ -58,10 +59,9 @@ augment_poisson_family_object <- function(f) {
     f$skewness <- function(mu) mu^(-1/2)
     f$mu.eta.prime <- function(eta) pmax(exp(eta), .Machine$double.eps)
     f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) stats::rpois(1, mu))
-    # f$log_py_given_mu <- function(y, mu) y * log(mu) - mu
     f$log_py_given_mu <- function(y, mu) stats::dpois(x = y, lambda = mu, log = TRUE)
-  }
-  else stop(get_nonstandard_link_msg())
+  } else stop(get_nonstandard_link_msg())
+  f$bayes_classifier <- function(mu0, mu1, pi) (mu0 - mu1 + log(pi) - log(1 - pi))/(log(mu0) - log(mu1))
   return(f)
 }
 
@@ -73,5 +73,6 @@ augment_gaussian_family_object <- function(f) {
     f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) stats::rnorm(1, mu))
     f$log_py_given_mu <- function(y, mu) -(1/2) * (y - mu)^2
   } else stop(get_nonstandard_link_msg())
+  f$bayes_classifier <- function(mu0, mu1, pi) ((1/2) * (mu0^2 - mu1^2) + log(pi) - log(1 - pi))/(mu0 - mu1)
   return(f)
 }

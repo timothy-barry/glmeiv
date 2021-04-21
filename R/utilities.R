@@ -32,3 +32,33 @@ check_col_names <- function(covariate_matrix) {
 diag_matrix_multiply <- function(A, D, B) {
   A %*% (B * D)
 }
+
+
+#' check em runs
+#'
+#' Verify that the log-likelihood was monotonically increasing across every EM run.
+#'
+#' @param em_runs a list of em runs
+#'
+#' @return TRUE or FALSE
+is_monotonic <- function(em_runs) {
+  monotonically_increasing <- sapply(X = em_runs, function(run) {
+    all(diff(run$log_liks) >= -0.1)
+  })
+  return(monotonically_increasing)
+}
+
+
+#' Select best EM run
+#'
+#' Returns the best run, defined as the run with positive perturbation coefficient for G and
+#' greatest log-likelihood.
+#'
+#' @param em_runs a list of outputs of run_em_algo_given_init
+#'
+#' @return the best run of the list
+select_best_em_run <- function(em_runs) {
+  # select the run with greatest likelihood
+  log_liks <- sapply(em_runs, function(run) run$log_lik)
+  return(em_runs[[which.max(log_liks)]])
+}

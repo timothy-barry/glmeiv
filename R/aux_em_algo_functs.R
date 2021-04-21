@@ -11,21 +11,6 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 }
 
 
-#' Select best EM run
-#'
-#' Returns the best run, defined as the run with positive perturbation coefficient for G and
-#' greatest log-likelihood.
-#'
-#' @param em_runs a list of outputs of run_em_algo_given_init
-#'
-#' @return the best run of the list
-select_best_em_run <- function(em_runs) {
-  # select the run with greatest likelihood
-  log_liks <- sapply(em_runs, function(run) run$log_lik)
-  return(em_runs[[which.max(log_liks)]])
-}
-
-
 #' Run GLM-EIV with known p
 #'
 #' @param m m data vector
@@ -50,7 +35,7 @@ select_best_em_run <- function(em_runs) {
 #' em_coefs <- run_glmeiv_known_p(m = dat$m, g = dat$g, m_fam = dat$m_fam, g_fam = dat$m_fam,
 #' covariate_matrix = dat$covariate_matrix, p = dat$p, m_offset = NULL, g_offset = NULL)
 #' # dat$m_coef; dat$g_coef; dat$pi
-run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset = NULL, g_offset = NULL, n_runs = 5, p_flip = 0.2, ep_tol = 0.5 * 1e-4, max_it = 50, alpha = 0.95, reduced_output = TRUE) {
+run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset = NULL, g_offset = NULL, n_runs = 5, p_flip = 0.15, ep_tol = 0.5 * 1e-4, max_it = 50, alpha = 0.95, reduced_output = TRUE) {
   initial_Ti1_matrix <- replicate(n_runs, expr = flip_weights(p, p_flip))
   em_runs <- run_em_algo_multiple_inits(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, pi = NULL, intercept = TRUE, ep_tol = ep_tol, max_it = max_it)
   if (reduced_output) {
@@ -60,19 +45,4 @@ run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset
     out <- em_runs
   }
   return(out)
-}
-
-
-#' check em runs
-#'
-#' Verify that the log-likelihood was monotonically increasing across every EM run.
-#'
-#' @param em_runs a list of em runs
-#'
-#' @return TRUE or FALSE
-is_monotonic <- function(em_runs) {
-  monotonically_increasing <- sapply(X = em_runs, function(run) {
-    all(diff(run$log_liks) >= -0.1)
-  })
-  return(monotonically_increasing)
 }
