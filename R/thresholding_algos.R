@@ -33,7 +33,7 @@ run_thresholding_method <- function(m, m_fam, covariate_matrix, p_hat, m_offset 
                     data = covariate_matrix_full, offset = m_offset)
   s <- summary(fit)$coefficients
   cis <- suppressMessages(stats::confint(fit, level = alpha))
-  out <- data.frame(variable = row.names(s),
+  out <- data.frame(variable = paste0("m_", row.names(s)),
              estimate = s[,"Estimate"],
              std_error = s[,"Std. Error"],
              p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],

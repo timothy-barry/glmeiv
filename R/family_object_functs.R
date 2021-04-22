@@ -50,6 +50,7 @@ augment_negbinom_family_object <- function(f) {
     f$log_py_given_mu <- function(y, mu) y * log(mu) - y * log(theta + mu) - theta * log(mu + theta)
   } else stop(get_nonstandard_link_msg())
   f$bayes_classifier <- function(mu0, mu1, pi) (theta * (log(mu0 + theta) - log(mu1 + theta)) + log(pi) - log(1 - pi))/(log(mu0 * (mu1 + theta)) - log(mu1 * (mu0 + theta)))
+  f$get_log_lik <- function(object) glm_log_lik(object)
   return(f)
 }
 
@@ -62,6 +63,7 @@ augment_poisson_family_object <- function(f) {
     f$log_py_given_mu <- function(y, mu) stats::dpois(x = y, lambda = mu, log = TRUE)
   } else stop(get_nonstandard_link_msg())
   f$bayes_classifier <- function(mu0, mu1, pi) (mu0 - mu1 + log(pi) - log(1 - pi))/(log(mu0) - log(mu1))
+  f$get_log_lik <- function(object) glm_log_lik(object)
   return(f)
 }
 
@@ -74,5 +76,6 @@ augment_gaussian_family_object <- function(f) {
     f$log_py_given_mu <- function(y, mu) -(1/2) * (y - mu)^2
   } else stop(get_nonstandard_link_msg())
   f$bayes_classifier <- function(mu0, mu1, pi) ((1/2) * (mu0^2 - mu1^2) + log(pi) - log(1 - pi))/(mu0 - mu1)
+  f$get_log_lik <- function(object) lm_log_lik(object)
   return(f)
 }

@@ -42,6 +42,18 @@ get_bayes_optimal_bdy <- function(l_0, l_1, pi, fam) {
 }
 
 
+#' Threshold counts (no covariates)
+#'
+#' Threshold the g counts in the absence of covariates.
+#'
+#' @param g_intercept (known) intercept of g model
+#' @param g_pert (known) perturbation coefficient of g model
+#' @param g g counts
+#' @param g_fam family object describing g
+#' @param pi (known) probability of perturbation
+#'
+#' @return The optimally thresholded counts p_hat
+#' @export
 threshold_counts_no_covariates <- function(g_intercept, g_pert, g, g_fam, pi) {
   fam <- g_fam %>% augment_family_object()
   l_0 <- g_intercept

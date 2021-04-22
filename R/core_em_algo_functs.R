@@ -134,7 +134,6 @@ augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
 
 run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n, pi, intercept) {
   weights <- c(1 - curr_Ti1s, curr_Ti1s)
-  # fit pi (if unknown)
   if (is.null(pi)) {
     fit_pi <- sum(curr_Ti1s)/n
     if (fit_pi >= 0.5) { # subtract by 1 to ensure label consistency
@@ -142,7 +141,6 @@ run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augm
       fit_pi <- sum(curr_Ti1s)/n
     }
   } else {
-    # pi_log_lik <- 0
     fit_pi <- pi
   }
   pi_log_lik <- log(1 - fit_pi) * (n - sum(curr_Ti1s)) + log(fit_pi) * sum(curr_Ti1s)
@@ -157,8 +155,8 @@ run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augm
                       weights = weights, offset = g_offset_augmented)
 
   # compute the log-likelihoods
-  m_log_lik <- stats::logLik(fit_m)[1]
-  g_log_lik <- stats::logLik(fit_g)[1]
+  m_log_lik <- m_fam$get_log_lik(fit_m)
+  g_log_lik <- g_fam$get_log_lik(fit_g)
 
   curr_log_lik <- m_log_lik + g_log_lik + pi_log_lik
 
