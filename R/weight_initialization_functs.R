@@ -58,7 +58,11 @@ threshold_counts_no_covariates <- function(g_intercept, g_pert, g, g_fam, pi) {
   fam <- g_fam %>% augment_family_object()
   l_0 <- g_intercept
   l_1 <- g_intercept + g_pert
-  bdy <- get_bayes_optimal_bdy(l_0, l_1, pi, fam)
-  p_hat <- as.integer(g >= bdy)
+  if (l_0 == l_1) { # no separation; random guess
+    p_hat <- sample(x = c(0,1), size = length(g), replace = TRUE)
+  } else {
+    bdy <- get_bayes_optimal_bdy(l_0, l_1, pi, fam)
+    p_hat <- as.integer(g >= bdy)
+  }
   return(p_hat)
 }
