@@ -85,8 +85,6 @@ simulate_glm_data <- function(coefs, fam, offsets, X) {
 }
 
 
-
-
 #' Get quick simulated data
 #'
 #' Quickly generates simulated data.

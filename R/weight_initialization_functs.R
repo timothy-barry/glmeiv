@@ -17,52 +17,49 @@ flip_weights <- function(w, p) {
 }
 
 
-#' Get Bayes-optimal boundary
+#' Threshold counts
 #'
-#' Given an augmented family object, linear component corresponding to P = 0,
-#' linear component corresponding to P = 1, and pi, get the Bayes-optimal
-#' decision boundary.
+#' Thresholds counts according to the Bayes-optimal decision boundary. When a covariate matrix is present, the decision boundary that is used is the mean of the Bayes-optimal decision boundaries across all examples.
 #'
-#' @param l_0 l_i(0)
-#' @param l_1 l_i(1)
+#' @param g gRNA counts
+#' @param g_intercept intercept for gRNA model
+#' @param g_pert perturbation coefficient for gRNA model
+#' @param g_fam family object describing distribution of g
 #' @param pi probability of perturbation
-#' @param fam augmented family object
+#' @param covariate_matrix (optional) matrix of technical covariates
+#' @param g_covariate_coefs (optional) coefficients corresponding to technical factors
+#' @param g_offset (optional) the offset vector
 #'
-#' @return the Bayes-optimal decision boundary
-#' @examples
-#' fam <- poisson() %>% augment_family_object()
-#' l_0 <- -1
-#' l_1 <- 2
-#' pi <- 0.2
-#' get_bayes_optimal_bdy(l_0, l_1, pi, fam)
-get_bayes_optimal_bdy <- function(l_0, l_1, pi, fam) {
-  mu_0 <- fam$linkinv(l_0)
-  mu_1 <- fam$linkinv(l_1)
-  fam$bayes_classifier(mu_0, mu_1, pi)
-}
-
-
-#' Threshold counts (no covariates)
-#'
-#' Threshold the g counts in the absence of covariates.
-#'
-#' @param g_intercept (known) intercept of g model
-#' @param g_pert (known) perturbation coefficient of g model
-#' @param g g counts
-#' @param g_fam family object describing g
-#' @param pi (known) probability of perturbation
-#'
-#' @return The optimally thresholded counts p_hat
+#' @return
 #' @export
-threshold_counts_no_covariates <- function(g_intercept, g_pert, g, g_fam, pi) {
-  fam <- g_fam %>% augment_family_object()
-  l_0 <- g_intercept
-  l_1 <- g_intercept + g_pert
-  if (l_0 == l_1) { # no separation; random guess
-    p_hat <- sample(x = c(0,1), size = length(g), replace = TRUE)
+#'
+#' @examples
+#' g_intercept <- 2
+#' g_pert <- 1
+#' g_fam <- poisson()
+#' pi <- 0.2
+#' covariate_matrix <- NULL
+#' g_covariate_coefs <- NULL
+#' g_offset <- NULL
+#' g <- rpois(1000, 5)
+#' threshold_counts(g, g_intercept, g_pert, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
+#' covariate_matrix <- data.frame(lib_size = runif(1000))
+#' g_covariate_coefs <- 2
+#' g_offset <- rpois(1000, 4)
+#' threshold_counts(g_intercept, g_pert, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
+threshold_counts_optimal <- function(g, g_intercept, g_pert, g_fam, pi, covariate_matrix = NULL, g_covariate_coefs = NULL, g_offset = NULL) {
+  if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
+  # get theoretical conditional means
+  conditional_means <- compute_theoretical_conditional_means(g_intercept, g_pert, g_fam, covariate_matrix, g_covariate_coefs, g_offset)
+  # compute the Bayes-optimal boundary
+  if (is.null(covariate_matrix)) {
+    bdy <- g_fam$bayes_classifier(conditional_means$mu0, conditional_means$mu1, pi)
   } else {
-    bdy <- get_bayes_optimal_bdy(l_0, l_1, pi, fam)
-    p_hat <- as.integer(g >= bdy)
+    mu0s <- conditional_means$mu0
+    mu1s <- conditional_means$mu1
+    bdy <- mean(sapply(seq(1, nrow(covariate_matrix)), function(i) {
+      g_fam$bayes_classifier(mu0s[i], mu1s[i], pi)
+      }))
   }
-  return(p_hat)
+  return(as.integer(g >= bdy))
 }
