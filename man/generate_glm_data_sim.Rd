@@ -11,7 +11,9 @@ generate_glm_data_sim(
   fam,
   covariate_matrix,
   covariate_coefs,
-  offset
+  offset,
+  n,
+  B
 )
 }
 \arguments{
@@ -28,6 +30,10 @@ generate_glm_data_sim(
 \item{covariate_coefs}{coefficients for technical factors}
 
 \item{offset}{optional offset vector}
+
+\item{n}{the number of examples}
+
+\item{B}{the number of datasets to resample}
 }
 \value{
 an n times B matrix of synthetic response data

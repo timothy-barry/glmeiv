@@ -23,7 +23,8 @@
 #'  m_intercept = 2,
 #'  g_intercept = 1,
 #'  m_fam = poisson(),
-#'  g_fam = poisson()
+#'  g_fam = poisson(),
+#'  alpha = 0.95
 #' )
 #'
 #' # simulation study 1: no covariates
@@ -44,21 +45,36 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, covariate
     covariate_matrix <- as.data.frame(lapply(covariate_sampler, function(f) f(fixed_params[["n"]])))
     fixed_params[["covariate_matrix"]] <- covariate_matrix
   }
+  fixed_params[["m_fam"]] <- augment_family_object(fixed_params[["m_fam"]])
+  fixed_params[["g_fam"]] <- augment_family_object(fixed_params[["g_fam"]])
 
   #######################################
   # 2. Define data_generator function and
   # corresponding data_generator simulatr
-  # function object.
+  # function object. Below, code some
+  # checks of correctness in the comment.
   #######################################
-  data_generator_object <- simulatr_function(f = generate_full_data,
+  data_generator_object <- simulatr::simulatr_function(f = generate_full_data,
                                              arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi", "n",
                                                            "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset"),
                                              packages = "glmeiv",
                                              loop = FALSE)
+  # With covariates: dat_list <- generate_full_data(m_fam = fixed_params$m_fam, m_intercept = fixed_params$m_intercept, m_perturbation = 1, g_fam = fixed_params$g_fam, g_intercept = fixed_params$g_intercept, g_perturbation = 1, pi = 0.2, n = fixed_params$n, B = fixed_params$B, covariate_matrix = fixed_params$covariate_matrix, m_covariate_coefs = fixed_params$m_covariate_coefs, g_covariate_coefs = fixed_params$g_covariate_coefs, m_offset = NULL, g_offset = NULL)
+  # m: fit <- glm(formula = m ~ p + lib_size + p_mito, family = fixed_params$m_fam, data = dplyr::mutate(fixed_params$covariate_matrix, dat[[1]]), offset = fixed_params$m_offset); coef(fit); c(fixed_params$m_intercept, 1, fixed_params$m_covariate_coefs)
+  # g: fit <- glm(formula = g ~ p + lib_size + p_mito, family = fixed_params$g_fam, data = dplyr::mutate(fixed_params$covariate_matrix, dat[[1]]), offset = fixed_params$g_offset); coef(fit); c(fixed_params$g_intercept, 1, fixed_params$g_covariate_coefs)
+  # Without covariates: dat <- generate_full_data(m_fam = fixed_params$m_fam, m_intercept = fixed_params$m_intercept, m_perturbation = 1, g_fam = fixed_params$g_fam, g_intercept = fixed_params$g_intercept, g_perturbation = 1, pi = 0.2, n = fixed_params$n, B = fixed_params$B, covariate_matrix = NULL, m_covariate_coefs = NULL, g_covariate_coefs = NULL, m_offset = NULL, g_offset = NULL)
+  # fit <- glm(formula = m ~ p, family = fixed_params$m_fam, data = dat[[1]], offset = fixed_params$m_offset); coef(fit); c(fixed_params$m_intercept, 1)
+  # fit <- glm(formula = g ~ p, family = fixed_params$g_fam, data = dat[[1]], offset = fixed_params$g_offset); coef(fit); c(fixed_params$g_intercept, 1)
 
-  ########################################
-  # 3. Define threshold estimator function
-  ########################################
+  ######################################
+  # 3. Define threshold estimator method
+  ######################################
+  thresholding_method_object <- simulatr::simulatr_function(f = run_thresholding_method_simulatr,
+                                                            arg_names = c("g_intercept", "g_perturbation", "g_fam", "m_fam", "pi", "covariate_matrix",
+                                                                          "g_covariate_coefs", "m_offset", "g_offset", "alpha"),
+                                                            packages = "glmeiv",
+                                                            loop = TRUE)
+  #
 
 }
 
@@ -89,8 +105,8 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
   # sample a B x n matrix of perturbation indicators
   perturbation_indicators <- matrix(data = stats::rbinom(n = n * B, size = 1, prob = pi), nrow = n, ncol = B)
   # call above for both m and g
-  m_matrix <- generate_glm_data_sim(m_intercept, m_perturbation, perturbation_indicators, m_fam, covariate_matrix, m_covariate_coefs, m_offset)
-  g_matrix <- generate_glm_data_sim(g_intercept, g_perturbation, perturbation_indicators, g_fam, covariate_matrix, g_covariate_coefs, g_offset)
+  m_matrix <- generate_glm_data_sim(m_intercept, m_perturbation, perturbation_indicators, m_fam, covariate_matrix, m_covariate_coefs, m_offset, n, B)
+  g_matrix <- generate_glm_data_sim(g_intercept, g_perturbation, perturbation_indicators, g_fam, covariate_matrix, g_covariate_coefs, g_offset, n, B)
   # Finally, create the data list
   data_list <- sapply(seq(1, B), function(i) {
     data.frame(m = m_matrix[,i], g = g_matrix[,i], p = perturbation_indicators[,i])
@@ -110,14 +126,16 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
 #' @param covariate_matrix fixed matrix of covariates
 #' @param covariate_coefs coefficients for technical factors
 #' @param offset optional offset vector
+#' @param n the number of examples
+#' @param B the number of datasets to resample
 #'
 #' @return an n times B matrix of synthetic response data
-generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_indicators, fam, covariate_matrix, covariate_coefs, offset) {
+generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_indicators, fam, covariate_matrix, covariate_coefs, offset, n, B) {
   # compute theoretical conditional means
   conditional_means <- compute_theoretical_conditional_means(intercept, perturbation_coef, fam,
                                                              covariate_matrix, covariate_coefs, offset)
-  mui0 <- conditional_means$mui0
-  mui1 <- conditional_means$mui1
+  mui0 <- conditional_means$mu0
+  mui1 <- conditional_means$mu1
   # sample outputs
   y_matrix <- sapply(seq(1, n), function(i) {
     row <- perturbation_indicators[i,]
@@ -126,8 +144,8 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
     n_mui0 <- length(idx_mui0)
     n_mui1 <- length(idx_mui1)
     out <- numeric(length = B)
-    out[idx_mui0] <- fam$simulate_n_times_given_mu(n = n_mui0, mu = mui0[i])
-    out[idx_mui1] <- fam$simulate_n_times_given_mu(n = n_mui1, mu = mui1[i])
+    out[idx_mui0] <- fam$simulate_n_times_given_mu(n = n_mui0, mu = if (is.null(covariate_matrix)) mui0 else mui0[i])
+    out[idx_mui1] <- fam$simulate_n_times_given_mu(n = n_mui1, mu = if (is.null(covariate_matrix)) mui1 else mui1[i])
     return(out)
   })
   return(t(y_matrix))
@@ -148,7 +166,6 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
 #' @return the scalar (or vector, if covariate_matrix is supplied) of conditional means
 compute_theoretical_conditional_means <- function(intercept, perturbation_coef, fam, covariate_matrix = NULL, covariate_coefs = NULL, offset = NULL) {
   # augment family object and set offset to 0, if necessary
-  if (is.null(fam$augmented)) fam <- augment_family_object(fam)
   if (is.null(offset)) offset <- 0
   # compute the (theoretical) conditional linear components
   if (is.null(covariate_matrix)) {

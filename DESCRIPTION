@@ -15,7 +15,9 @@ RoxygenNote: 7.1.1
 Imports: 
     MASS,
     dplyr,
-    magrittr
+    magrittr,
+    tidyr,
+    simulatr
 Suggests: 
     ggplot2,
     cowplot

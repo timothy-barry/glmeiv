@@ -18,9 +18,7 @@ a new binary vector with E(p) weights flipped.
 Flip weights
 }
 \examples{
-\dontrun{
 w <- rbinom(n = 100, size = 1, prob = 0.5)
 p <- 0.1
-flip_weights(w, p)
-}
+glmeiv:::flip_weights(w, p)
 }

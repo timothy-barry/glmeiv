@@ -6,11 +6,9 @@
 #' @return a new binary vector with E(p) weights flipped.
 #'
 #' @examples
-#' \dontrun{
 #' w <- rbinom(n = 100, size = 1, prob = 0.5)
 #' p <- 0.1
-#' flip_weights(w, p)
-#' }
+#' glmeiv:::flip_weights(w, p)
 flip_weights <- function(w, p) {
   out <- (w + stats::rbinom(n = length(w), size = 1, prob = p)) %% 2
   return(out)
@@ -30,7 +28,7 @@ flip_weights <- function(w, p) {
 #' @param g_covariate_coefs (optional) coefficients corresponding to technical factors
 #' @param g_offset (optional) the offset vector
 #'
-#' @return
+#' @return an integer (0/1) vector of thresholded counts.
 #' @export
 #'
 #' @examples
@@ -42,11 +40,13 @@ flip_weights <- function(w, p) {
 #' g_covariate_coefs <- NULL
 #' g_offset <- NULL
 #' g <- rpois(1000, 5)
-#' threshold_counts(g, g_intercept, g_pert, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
+#' threshold_counts_optimal(g, g_intercept, g_pert, g_fam, pi,
+#' covariate_matrix, g_covariate_coefs, g_offset)
 #' covariate_matrix <- data.frame(lib_size = runif(1000))
 #' g_covariate_coefs <- 2
 #' g_offset <- rpois(1000, 4)
-#' threshold_counts(g_intercept, g_pert, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
+#' threshold_counts_optimal(g, g_intercept, g_pert, g_fam, pi,
+#' covariate_matrix, g_covariate_coefs, g_offset)
 threshold_counts_optimal <- function(g, g_intercept, g_pert, g_fam, pi, covariate_matrix = NULL, g_covariate_coefs = NULL, g_offset = NULL) {
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
   # get theoretical conditional means

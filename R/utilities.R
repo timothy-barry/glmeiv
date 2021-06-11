@@ -57,6 +57,7 @@ is_monotonic <- function(em_runs) {
 #' @param em_runs a list of outputs of run_em_algo_given_init
 #'
 #' @return the best run of the list
+#' @export
 select_best_em_run <- function(em_runs) {
   # select the run with greatest likelihood
   log_liks <- sapply(em_runs, function(run) run$log_lik)

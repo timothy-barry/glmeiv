@@ -47,6 +47,8 @@ run_glmeiv_known_p(
 \item{max_it}{(default 50) maximum number of EM iterations (per run)}
 
 \item{alpha}{(default 0.95) confidence interval level}
+
+\item{reduced_output}{(default TRUE) return only the best EM run (as determined by log-likelihood)?}
 }
 \value{
 the best EM run

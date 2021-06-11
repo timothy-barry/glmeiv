@@ -2,9 +2,9 @@
 
 #' @rdname run_em_algo_given_init
 #' @export
-run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, pi = NULL, intercept = TRUE, ep_tol = 0.5 * 1e-4, max_it = 50) {
+run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, ep_tol = 0.5 * 1e-4, max_it = 50) {
   em_runs <- apply(X = initial_Ti1_matrix, MARGIN = 2, FUN = function(initial_Ti1s) {
-    run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, pi, intercept, ep_tol, max_it)
+    run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol, max_it)
   })
   names(em_runs) <- NULL
   return(em_runs)
@@ -26,6 +26,7 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 #' @param ep_tol (detault 0.1) tolerance threshold for EM convergence
 #' @param max_it (default 50) maximum number of EM iterations (per run)
 #' @param alpha (default 0.95) confidence interval level
+#' @param reduced_output (default TRUE) return only the best EM run (as determined by log-likelihood)?
 #'
 #' @return the best EM run
 #' @export
@@ -37,7 +38,7 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 #' # dat$m_coef; dat$g_coef; dat$pi
 run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset = NULL, g_offset = NULL, n_runs = 5, p_flip = 0.15, ep_tol = 0.5 * 1e-4, max_it = 50, alpha = 0.95, reduced_output = TRUE) {
   initial_Ti1_matrix <- replicate(n_runs, expr = flip_weights(p, p_flip))
-  em_runs <- run_em_algo_multiple_inits(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, pi = NULL, intercept = TRUE, ep_tol = ep_tol, max_it = max_it)
+  em_runs <- run_em_algo_multiple_inits(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, ep_tol = ep_tol, max_it = max_it)
   if (reduced_output) {
     best_run <- select_best_em_run(em_runs)
     out <- run_inference_on_em_fit(best_run, alpha)

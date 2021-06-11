@@ -37,7 +37,8 @@ fixed_params <- list(
  m_intercept = 2,
  g_intercept = 1,
  m_fam = poisson(),
- g_fam = poisson()
+ g_fam = poisson(),
+ alpha = 0.95
 )
 
 # simulation study 1: no covariates
