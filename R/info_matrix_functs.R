@@ -34,6 +34,7 @@ run_inference_on_em_fit <- function(em_fit, alpha = 0.95) {
   coef_table <- as.data.frame(coef_table) %>% dplyr::mutate(variable = vars) %>%
     dplyr::select(variable, everything())
   row.names(coef_table) <- NULL
+  coef_table$variable <- gsub(pattern = "\\(Intercept\\)", replacement = "intercept", x = coef_table$variable)
   return(coef_table)
 }
 

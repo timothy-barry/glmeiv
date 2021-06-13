@@ -14,8 +14,9 @@ run_em_algo_multiple_inits(
   initial_Ti1_matrix,
   m_offset,
   g_offset,
+  return_best,
   ep_tol = 0.5 * 1e-04,
-  max_it = 50
+  max_it = 75
 )
 
 run_em_algo_given_init(
@@ -28,7 +29,7 @@ run_em_algo_given_init(
   m_offset,
   g_offset,
   ep_tol = 0.5 * 1e-04,
-  max_it = 50
+  max_it = 75
 )
 }
 \arguments{
@@ -48,9 +49,11 @@ run_em_algo_given_init(
 
 \item{g_offset}{(optional) offsets for GLM for G}
 
-\item{ep_tol}{EM convergence threshold}
+\item{return_best}{(run_em_algo_multiple_inits only) return the best fit only, as determined by log-likelihood?}
 
-\item{max_it}{maximum number of EM iterations}
+\item{ep_tol}{(optional) EM convergence threshold}
+
+\item{max_it}{(optional) maximum number of EM iterations}
 
 \item{initial_Ti1s}{the initial vector of membership probabilities}
 }
@@ -62,6 +65,7 @@ fit for pi, number of iterations,full log-likelihood of final model
 Run EM algo given initialization weights
 }
 \examples{
+\dontrun{
 n <- 1000
 m_fam <- poisson()
 g_fam <- poisson()
@@ -105,4 +109,5 @@ m_offset, g_offset)
 em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
 covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
 select_best_em_run(em_runs)
+}
 }

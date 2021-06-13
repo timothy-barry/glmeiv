@@ -9,6 +9,7 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' n <- 10000
 #' m_fam <- g_fam <- poisson()
 #' pi <- 0.4
@@ -19,6 +20,7 @@
 #' m_coef, g_coef, pi, covariate_matrix, n = n)
 #' p <- plot_count_distribution(generated_data, "gRNA")
 #' plot(p)
+#' }
 plot_count_distribution <- function(generated_data, modality) {
   df <- data.frame(p = factor(x = generated_data$p,  levels = c(1, 0), labels = c("Perturbation", "No perturbation")),
                    counts = if (modality == "mRNA") generated_data$m else generated_data$g)

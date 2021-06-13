@@ -18,6 +18,7 @@ a ggplot of the histogram
 Plots the distribution of m or g counts, colored by perturbation status.
 }
 \examples{
+\dontrun{
 n <- 10000
 m_fam <- g_fam <- poisson()
 pi <- 0.4
@@ -28,4 +29,5 @@ generated_data <- generate_data_from_model(m_fam, g_fam,
 m_coef, g_coef, pi, covariate_matrix, n = n)
 p <- plot_count_distribution(generated_data, "gRNA")
 plot(p)
+}
 }

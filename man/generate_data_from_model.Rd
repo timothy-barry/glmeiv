@@ -44,6 +44,7 @@ Generates data from the GLM-EIV model. The model treats the (unobserved) binary 
 covariates as fixed.
 }
 \examples{
+\dontrun{
 library(magrittr)
 n <- 10000
 m_fam <- augment_family_object(poisson())
@@ -61,4 +62,5 @@ covariate_matrix_full <- data.frame(perturbation = generated_data$p) \%>\%
 dplyr::mutate(covariate_matrix)
 fit_m <- glm(formula = generated_data$m ~ ., family = m_fam, data = covariate_matrix_full)
 fit_g <- glm(formula = generated_data$g ~ ., family = g_fam, data = covariate_matrix_full)
+}
 }

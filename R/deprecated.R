@@ -15,9 +15,9 @@
 #' @param n (optional, required if covariate_matrix NULL) the number of samples to generate
 #'
 #' @return a list containing m, g, and p.
-#' @export
 #'
 #' @examples
+#' \dontrun{
 #' library(magrittr)
 #' n <- 10000
 #' m_fam <- augment_family_object(poisson())
@@ -35,6 +35,7 @@
 #' dplyr::mutate(covariate_matrix)
 #' fit_m <- glm(formula = generated_data$m ~ ., family = m_fam, data = covariate_matrix_full)
 #' fit_g <- glm(formula = generated_data$g ~ ., family = g_fam, data = covariate_matrix_full)
+#' }
 generate_data_from_model <- function(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix, m_offset = NULL, g_offset = NULL, n = NULL) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
@@ -112,3 +113,48 @@ get_quick_simulated_data <- function(n = 1000) {
   out$g_fam <- g_fam
   return(out)
 }
+
+
+#' Run GLM-EIV with known p
+#'
+#' @param m m data vector
+#' @param g g data vector
+#' @param m_fam family object for m
+#' @param g_fam family object for g
+#' @param covariate_matrix the matrix of observed covariates
+#' @param p the vector of p's; these typically are unobserved but will be used as the initial weights here
+#' @param m_offset (default NULL) the vector of offsets for m
+#' @param g_offset (default NULL) the vector of offsets for g
+#' @param n_runs (default 10) number of EM algo runs
+#' @param p_flip (default 0.15) expected fraction of initial weights to flip in each run
+#' @param ep_tol (detault 0.1) tolerance threshold for EM convergence
+#' @param max_it (default 50) maximum number of EM iterations (per run)
+#' @param alpha (default 0.95) confidence interval level
+#' @param reduced_output (default TRUE) return only the best EM run (as determined by log-likelihood)?
+#'
+#' @return the best EM run
+#' @export
+#'
+#' @examples
+#' dat <- get_quick_simulated_data(5000)
+#' em_coefs <- run_glmeiv_known_p(m = dat$m, g = dat$g, m_fam = dat$m_fam, g_fam = dat$m_fam,
+#' covariate_matrix = dat$covariate_matrix, p = dat$p, m_offset = NULL, g_offset = NULL)
+#' # dat$m_coef; dat$g_coef; dat$pi
+run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset = NULL, g_offset = NULL, n_runs = 5, p_flip = 0.15, ep_tol = 0.5 * 1e-4, max_it = 50, alpha = 0.95, reduced_output = TRUE) {
+  initial_Ti1_matrix <- replicate(n_runs, expr = flip_weights(p, p_flip))
+  em_runs <- run_em_algo_multiple_inits(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, ep_tol = ep_tol, max_it = max_it)
+  if (reduced_output) {
+    best_run <- select_best_em_run(em_runs)
+    out <- run_inference_on_em_fit(best_run, alpha)
+  } else {
+    out <- em_runs
+  }
+  return(out)
+}
+
+# With covariates: dat <- generate_full_data(m_fam = fixed_params$m_fam, m_intercept = fixed_params$m_intercept, m_perturbation = 1, g_fam = fixed_params$g_fam, g_intercept = fixed_params$g_intercept, g_perturbation = 1, pi = 0.2, n = fixed_params$n, B = fixed_params$B, covariate_matrix = fixed_params$covariate_matrix, m_covariate_coefs = fixed_params$m_covariate_coefs, g_covariate_coefs = fixed_params$g_covariate_coefs, m_offset = NULL, g_offset = NULL)
+# m: fit <- glm(formula = m ~ p + lib_size + p_mito, family = fixed_params$m_fam, data = dplyr::mutate(fixed_params$covariate_matrix, dat[[1]]), offset = fixed_params$m_offset); coef(fit); c(fixed_params$m_intercept, 1, fixed_params$m_covariate_coefs)
+# g: fit <- glm(formula = g ~ p + lib_size + p_mito, family = fixed_params$g_fam, data = dplyr::mutate(fixed_params$covariate_matrix, dat[[1]]), offset = fixed_params$g_offset); coef(fit); c(fixed_params$g_intercept, 1, fixed_params$g_covariate_coefs)
+# Without covariates: dat <- generate_full_data(m_fam = fixed_params$m_fam, m_intercept = fixed_params$m_intercept, m_perturbation = 1, g_fam = fixed_params$g_fam, g_intercept = fixed_params$g_intercept, g_perturbation = 1, pi = 0.2, n = fixed_params$n, B = fixed_params$B, covariate_matrix = NULL, m_covariate_coefs = NULL, g_covariate_coefs = NULL, m_offset = NULL, g_offset = NULL)
+# fit <- glm(formula = m ~ p, family = fixed_params$m_fam, data = dat[[1]], offset = fixed_params$m_offset); coef(fit); c(fixed_params$m_intercept, 1)
+# fit <- glm(formula = g ~ p, family = fixed_params$g_fam, data = dat[[1]], offset = fixed_params$g_offset); coef(fit); c(fixed_params$g_intercept, 1)

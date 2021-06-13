@@ -9,14 +9,16 @@
 #' @param initial_Ti1_matrix a matrix of starting membership probabilities
 #' @param m_offset (optional) offsets for GLM for M
 #' @param g_offset (optional) offsets for GLM for G
-#' @param ep_tol EM convergence threshold
-#' @param max_it maximum number of EM iterations
+#' @param return_best (run_em_algo_multiple_inits only) return the best fit only, as determined by log-likelihood?
+#' @param ep_tol (optional) EM convergence threshold
+#' @param max_it  (optional) maximum number of EM iterations
 #'
 #' @return a list containing the following: fit object of M GLM, fit object of G GLM,
 #' fit for pi, number of iterations,full log-likelihood of final model
 #' @export
 #' @name run_em_algo_given_init
 #' @examples
+#' \dontrun{
 #' n <- 1000
 #' m_fam <- poisson()
 #' g_fam <- poisson()
@@ -60,7 +62,8 @@
 #' em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
 #' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
 #' select_best_em_run(em_runs)
-run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.5 * 1e-4, max_it = 50) {
+#' }
+run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.5 * 1e-4, max_it = 75) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
