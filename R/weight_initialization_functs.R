@@ -52,3 +52,19 @@ get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covari
   }
   return(bdy)
 }
+
+
+#' Random initialization
+#'
+#' Output a vector of length n; n * pi of the entries are randomly set to 1, all others to 0.
+#'
+#' @param n length of output vector
+#' @param pi fraction of entries to set to 1
+#'
+#' @return randomly initialized vector
+#' @export
+random_initialization <- function(n, pi) {
+  out <- integer(n)
+  out[sample(x = seq(1, n), size = floor(pi * n), replace = FALSE)] <- 1L
+  return(out)
+}

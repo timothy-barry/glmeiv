@@ -41,9 +41,14 @@ run_thresholding_method_simulatr <- function(dat_list, g_intercept, g_perturbati
   # first, obtain the optimal boundary
   bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
   n_datasets <- length(dat_list)
+  n <- nrow(dat_list[[1]])
   res_list <- lapply(X = seq(1, n_datasets), FUN = function(i) {
     dat <- dat_list[[i]]
-    phat <- as.integer(dat$g > bdy)
+    g <- dat$g
+    phat <- as.integer(g > bdy)
+    if (all(phat == 1) || all(phat == 0)) { # just randomly initialize instead
+      phat <- random_initialization(n, pi)
+    }
     # next, create the data matrix
     data_mat <- data.frame(m = dat$m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
     # fit model

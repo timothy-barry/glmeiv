@@ -50,11 +50,16 @@ run_em_algo_simulatr_optimal_thresh <- function(dat_list, g_intercept, g_perturb
   # first, obtain the optimal boundary
   bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
   n_datasets <- length(dat_list)
+  n <- nrow(dat_list[[1]])
   res_list <- lapply(X = seq(1, n_datasets), FUN = function(i) {
     dat <- dat_list[[i]]
-    # get optimal threshold and initial Ti1 matrix
-    phat <- as.integer(dat$g > bdy)
-    initial_Ti1_matrix <- cbind(phat, replicate(n_em_rep - 1, flip_weights(phat, p_flip)))
+    g <- dat$g
+    phat <- as.integer(g > bdy)
+    if (all(phat == 1) || all(phat == 0)) { # just randomly initialize instead
+      initial_Ti1_matrix <- replicate(n = n_em_rep, random_initialization(n, pi))
+    } else {
+      initial_Ti1_matrix <- cbind(phat, replicate(n_em_rep - 1, flip_weights(phat, p_flip)))
+    }
     em_fit <- run_em_algo_multiple_inits(m = dat$m, g = dat$g, m_fam = m_fam, g_fam = g_fam,
                                covariate_matrix = covariate_matrix, initial_Ti1_matrix = initial_Ti1_matrix,
                                m_offset = m_offset, g_offset = g_offset, return_best = TRUE)
