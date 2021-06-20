@@ -61,10 +61,11 @@ run_em_algo_simulatr_optimal_thresh <- function(dat_list, g_intercept, g_perturb
       initial_Ti1_matrix <- cbind(phat, replicate(n_em_rep - 1, flip_weights(phat, p_flip)))
     }
     em_fit <- run_em_algo_multiple_inits(m = dat$m, g = dat$g, m_fam = m_fam, g_fam = g_fam,
-                               covariate_matrix = covariate_matrix, initial_Ti1_matrix = initial_Ti1_matrix,
-                               m_offset = m_offset, g_offset = g_offset, return_best = TRUE)
+                                                  covariate_matrix = covariate_matrix, initial_Ti1_matrix = initial_Ti1_matrix,
+                                                  m_offset = m_offset, g_offset = g_offset, return_best = TRUE)
     s <- run_inference_on_em_fit(em_fit, alpha) %>% dplyr::rename("parameter" = "variable")
     tidyr::pivot_longer(s, cols = -parameter, names_to = "target") %>%
+      dplyr::add_row(parameter = "information", target = "converged", value = em_fit$converged) %>%
       dplyr::mutate(run_id = i)
   })
   return(do.call(rbind, res_list))

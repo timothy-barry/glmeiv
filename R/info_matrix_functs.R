@@ -23,7 +23,9 @@ run_inference_on_em_fit <- function(em_fit, alpha = 0.95) {
   # construct standard errors and confidence intervals
   estimate <- c(em_fit$fit_pi, stats::coef(fit_m), stats::coef(fit_g))
   names(estimate) <- colnames(vcov_mat)
-  std_error <- sqrt(diag(vcov_mat))
+  diag_entries <- diag(vcov_mat)
+  diag_entries[diag_entries < 0] <- NA
+  std_error <- sqrt(diag_entries)
   z_value <- estimate/std_error
   p_value <- 2 * stats::pnorm(-abs(z_value))
   mult_factor <- stats::qnorm(1 - (1 - alpha)/2)

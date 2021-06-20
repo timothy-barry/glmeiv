@@ -102,7 +102,6 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
       iteration <- iteration + 1L
       # check iteration limit
       if (iteration >= max_it) {
-        warning("Iteration limit reached; solution not optimal.")
         break()
       }
     }

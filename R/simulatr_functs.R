@@ -5,6 +5,7 @@
 #' @param param_grid a grid of parameters giving the parameter settings
 #' @param fixed_params a list of fixed parameters
 #' @param covariate_sampler a list of functions to generate a covariate matrix
+#' @param one_rep_times a named list giving the single rep time (either scalar or vector) of each method.
 #'
 #' @return a simulatr_specifier object
 #' @export
@@ -38,7 +39,7 @@
 #' fixed_params[["m_covariate_coefs"]] <- c(0.2, -0.1)
 #' fixed_params[["g_covariate_coefs"]] <- c(0.1, -0.2)
 #' create_simulatr_specifier_object(param_grid, fixed_params, covariate_sampler)
-create_simulatr_specifier_object <- function(param_grid, fixed_params, covariate_sampler = NULL) {
+create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times, covariate_sampler = NULL) {
   ############################################
   # 1. Create covariate_matrix (if necessary);
   # update the fixed_params list.
@@ -61,7 +62,8 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, covariate
                                              arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi", "n",
                                                            "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset"),
                                              packages = "glmeiv",
-                                             loop = FALSE)
+                                             loop = FALSE,
+                                             one_rep_time = one_rep_times[["generate_data_function"]])
 
   ######################################
   # 3. Define threshold estimator method
@@ -70,7 +72,8 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, covariate
                                                             arg_names = c("g_intercept", "g_perturbation", "g_fam", "m_fam", "pi", "covariate_matrix",
                                                                           "g_covariate_coefs", "m_offset", "g_offset", "alpha"),
                                                             packages = "glmeiv",
-                                                            loop = FALSE)
+                                                            loop = FALSE,
+                                                            one_rep_time = one_rep_times[["thresholding"]])
 
   ###############################
   # 4. Define EM algorithm method
@@ -79,7 +82,8 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, covariate
                                                   arg_names = c("g_intercept", "g_perturbation", "g_fam", "m_fam", "pi", "covariate_matrix",
                                                                 "g_covariate_coefs", "m_offset", "g_offset", "alpha", "n_em_rep", "p_flip"),
                                                   packages = "glmeiv",
-                                                  loop = FALSE)
+                                                  loop = FALSE,
+                                                  one_rep_time = one_rep_times[["em"]])
 
   #############################
   # 5. Finally, instantiate the
