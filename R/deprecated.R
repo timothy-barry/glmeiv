@@ -136,10 +136,12 @@ get_quick_simulated_data <- function(n = 1000) {
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' dat <- get_quick_simulated_data(5000)
 #' em_coefs <- run_glmeiv_known_p(m = dat$m, g = dat$g, m_fam = dat$m_fam, g_fam = dat$m_fam,
 #' covariate_matrix = dat$covariate_matrix, p = dat$p, m_offset = NULL, g_offset = NULL)
 #' # dat$m_coef; dat$g_coef; dat$pi
+#' }
 run_glmeiv_known_p <- function(m, g, m_fam, g_fam, covariate_matrix, p, m_offset = NULL, g_offset = NULL, n_runs = 5, p_flip = 0.15, ep_tol = 0.5 * 1e-4, max_it = 50, alpha = 0.95, reduced_output = TRUE) {
   initial_Ti1_matrix <- replicate(n_runs, expr = flip_weights(p, p_flip))
   em_runs <- run_em_algo_multiple_inits(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, ep_tol = ep_tol, max_it = max_it)

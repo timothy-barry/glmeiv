@@ -54,6 +54,7 @@ a data frame with columns parameter, target, value, and run_id
 Run em algorithm for simulatr using optimal threshold initialization
 }
 \examples{
+\dontrun{
 library(magrittr)
 m_fam <- g_fam <- poisson() \%>\% augment_family_object()
 m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
@@ -66,4 +67,5 @@ m_covariate_coefs, g_covariate_coefs, m_offset, g_offset)
 run_em_algo_simulatr_optimal_thresh(dat_list, g_intercept, g_perturbation,
 g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset,
 alpha, n_em_rep, p_flip)
+}
 }

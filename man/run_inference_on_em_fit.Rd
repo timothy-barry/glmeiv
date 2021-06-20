@@ -18,8 +18,10 @@ a data frame with columns variable, estimate, std_error, p_value, confint_lower,
 Run inference on EM fit
 }
 \examples{
+\dontrun{
 dat <- get_quick_simulated_data(1000)
 em_fit <- run_em_algo_given_init(m = dat$m, g = dat$g, m_fam = poisson(), g_fam = poisson(),
 covariate_matrix = dat$covariate_matrix, initial_Ti1s = dat$p, m_offset = NULL, g_offset = NULL)
 se_table <- run_inference_on_em_fit(em_fit)
+}
 }

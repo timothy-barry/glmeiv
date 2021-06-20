@@ -30,12 +30,14 @@ flip_weights <- function(w, p) {
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' library(magrittr)
 #' m_fam <- g_fam <- poisson() %>% augment_family_object()
 #' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
 #' pi <- 0.2; n <- 1000; B <- 500; alpha <- 0.95
 #' m_offset <- g_offset <- NULL
 #' bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi)
+#' }
 get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covariate_matrix = NULL, g_covariate_coefs = NULL, g_offset = NULL) {
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
   # get theoretical conditional means

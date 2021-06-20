@@ -11,6 +11,7 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' library(simulatr)
 #' param_grid <- create_param_grid(varying_values = list(pi = seq(0.0, 0.5, 0.05),
 #' m_perturbation = seq(0.0, -2, -0.2),
@@ -39,6 +40,7 @@
 #' fixed_params[["m_covariate_coefs"]] <- c(0.2, -0.1)
 #' fixed_params[["g_covariate_coefs"]] <- c(0.1, -0.2)
 #' create_simulatr_specifier_object(param_grid, fixed_params, covariate_sampler)
+#' }
 create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times, covariate_sampler = NULL) {
   ############################################
   # 1. Create covariate_matrix (if necessary);
@@ -119,6 +121,7 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
 #' @return a list of length B of synthetic datasets with columns (p, m, g)
 #' @export
 #' @examples
+#' \dontrun{
 #' library(magrittr)
 #' m_fam <- g_fam <- poisson() %>% augment_family_object()
 #' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
@@ -135,6 +138,7 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
 #' dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,
 #' g_intercept, g_perturbation, pi, n, B, covariate_matrix, m_covariate_coefs,
 #' g_covariate_coefs, m_offset, g_offset)
+#' }
 generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_intercept, g_perturbation, pi, n,
                                B, covariate_matrix, m_covariate_coefs, g_covariate_coefs, m_offset, g_offset) {
   # sample a B x n matrix of perturbation indicators

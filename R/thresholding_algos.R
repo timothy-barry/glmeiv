@@ -18,6 +18,7 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' m_fam <- g_fam <- poisson() %>% augment_family_object()
 #' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
 #' pi <- 0.2; n <- 1000; B <- 500; alpha <- 0.95
@@ -37,6 +38,7 @@
 #' m_offset = NULL,
 #' g_offset = NULL,
 #' alpha = alpha)
+#' }
 run_thresholding_method_simulatr <- function(dat_list, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha) {
   # first, obtain the optimal boundary
   bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)

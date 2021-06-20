@@ -48,6 +48,7 @@ a data frame with columns parameter, target, value, and run_id
 Runs the thresholding method; this function is meant to be passed to a simulatr object.
 }
 \examples{
+\dontrun{
 m_fam <- g_fam <- poisson() \%>\% augment_family_object()
 m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
 pi <- 0.2; n <- 1000; B <- 500; alpha <- 0.95
@@ -67,4 +68,5 @@ g_covariate_coefs = NULL,
 m_offset = NULL,
 g_offset = NULL,
 alpha = alpha)
+}
 }

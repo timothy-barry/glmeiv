@@ -7,6 +7,7 @@
 create_simulatr_specifier_object(
   param_grid,
   fixed_params,
+  one_rep_times,
   covariate_sampler = NULL
 )
 }
@@ -14,6 +15,8 @@ create_simulatr_specifier_object(
 \item{param_grid}{a grid of parameters giving the parameter settings}
 
 \item{fixed_params}{a list of fixed parameters}
+
+\item{one_rep_times}{a named list giving the single rep time (either scalar or vector) of each method.}
 
 \item{covariate_sampler}{a list of functions to generate a covariate matrix}
 }
@@ -24,6 +27,7 @@ a simulatr_specifier object
 Creates a simulatr_specifier object to run a simulation.
 }
 \examples{
+\dontrun{
 library(simulatr)
 param_grid <- create_param_grid(varying_values = list(pi = seq(0.0, 0.5, 0.05),
 m_perturbation = seq(0.0, -2, -0.2),
@@ -52,4 +56,5 @@ covariate_sampler <- list(lib_size = function(n) rpois(n, 10),
 fixed_params[["m_covariate_coefs"]] <- c(0.2, -0.1)
 fixed_params[["g_covariate_coefs"]] <- c(0.1, -0.2)
 create_simulatr_specifier_object(param_grid, fixed_params, covariate_sampler)
+}
 }

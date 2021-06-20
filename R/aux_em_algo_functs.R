@@ -34,6 +34,7 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' library(magrittr)
 #' m_fam <- g_fam <- poisson() %>% augment_family_object()
 #' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
@@ -46,6 +47,7 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 #' run_em_algo_simulatr_optimal_thresh(dat_list, g_intercept, g_perturbation,
 #' g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset,
 #' alpha, n_em_rep, p_flip)
+#' }
 run_em_algo_simulatr_optimal_thresh <- function(dat_list, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha, n_em_rep, p_flip) {
   # first, obtain the optimal boundary
   bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)

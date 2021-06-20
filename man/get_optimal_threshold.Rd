@@ -36,10 +36,12 @@ an integer (0/1) vector of thresholded counts.
 Thresholds counts according to the Bayes-optimal decision boundary. When a covariate matrix is present, the decision boundary that is used is the mean of the Bayes-optimal decision boundaries across all examples.
 }
 \examples{
+\dontrun{
 library(magrittr)
 m_fam <- g_fam <- poisson() \%>\% augment_family_object()
 m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
 pi <- 0.2; n <- 1000; B <- 500; alpha <- 0.95
 m_offset <- g_offset <- NULL
 bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi)
+}
 }
