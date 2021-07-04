@@ -51,7 +51,7 @@ Runs the thresholding method; this function is meant to be passed to a simulatr 
 \dontrun{
 m_fam <- g_fam <- poisson() \%>\% augment_family_object()
 m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
-pi <- 0.2; n <- 1000; B <- 500; alpha <- 0.95
+pi <- 0.2; n <- 1000; B <- 5; alpha <- 0.95
 m_offset <- g_offset <- NULL
 m_covariate_coefs <- g_covariate_coefs <- covariate_matrix <- NULL
 dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,

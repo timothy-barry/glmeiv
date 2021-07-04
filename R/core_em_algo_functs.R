@@ -106,7 +106,7 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
       }
     }
   }
-  out <- list(fit_m = m_step$fit_m, fit_g = m_step$fit_g, fit_pi = m_step$fit_pi, n_iterations = iteration, log_liks = log_liks, log_lik = curr_log_lik, converged = converged, n = n)
+  out <- list(fit_m = m_step$fit_m, fit_g = m_step$fit_g, fit_pi = m_step$fit_pi, n_iterations = iteration, log_liks = log_liks, log_lik = curr_log_lik, converged = converged, n = n, posterior_perturbation_probs = m_step$posterior_perturbation_probs)
   return(out)
 }
 
@@ -160,7 +160,7 @@ run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augm
   curr_log_lik <- m_log_lik + g_log_lik + pi_log_lik
 
   # return list of fitted models, as well as current log-likelihood
-  out <- list(fit_m = fit_m, fit_g = fit_g, fit_pi = fit_pi, curr_log_lik = curr_log_lik)
+  out <- list(fit_m = fit_m, fit_g = fit_g, fit_pi = fit_pi, curr_log_lik = curr_log_lik, posterior_perturbation_probs = curr_Ti1s)
   return(out)
 }
 

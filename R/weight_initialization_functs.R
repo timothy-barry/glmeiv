@@ -1,19 +1,3 @@
-#' Flip weights
-#'
-#' @param w a binary (0/1) vector
-#' @param p the expected fraction of weights to flip
-#'
-#' @return a new binary vector with E(p) weights flipped.
-#'
-#' @examples
-#' w <- rbinom(n = 100, size = 1, prob = 0.5)
-#' p <- 0.1
-#' glmeiv:::flip_weights(w, p)
-flip_weights <- function(w, p) {
-  out <- (w + stats::rbinom(n = length(w), size = 1, prob = p)) %% 2
-  return(out)
-}
-
 #' Get optimal threshold
 #'
 #' Thresholds counts according to the Bayes-optimal decision boundary. When a covariate matrix is present, the decision boundary that is used is the mean of the Bayes-optimal decision boundaries across all examples.
@@ -56,17 +40,72 @@ get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covari
 }
 
 
-#' Random initialization
+#' Initialize weights using marginal mixtures
 #'
-#' Output a vector of length n; n * pi of the entries are randomly set to 1, all others to 0.
+#' Initializes weights for GLM-EIV by fitting marginal mixtures, then taking weighted average.
 #'
-#' @param n length of output vector
-#' @param pi fraction of entries to set to 1
+#' @param m mRNA counts
+#' @param g gRNA counts
+#' @param m_fam family describing mRNA counts
+#' @param g_fam family describing gRNA counts
+#' @param m_offset optional offsets for m
+#' @param g_offset optional offsets for g
+#' @param lambda optional weight in weighted average; if not supplied, chosen adaptively
 #'
-#' @return randomly initialized vector
-#' @export
-random_initialization <- function(n, pi) {
-  out <- integer(n)
-  out[sample(x = seq(1, n), size = floor(pi * n), replace = FALSE)] <- 1L
+#' @return initial weights for algorithm
+initialize_weights_using_marginal_mixtures <- function(m, g, m_fam, g_fam, m_offset, g_offset, lambda = NULL) {
+  m_weights <- get_marginal_mixture_weights(m, m_fam, m_offset)
+  g_weights <- get_marginal_mixture_weights(g, g_fam, g_offset)
+  if (is.null(lambda)) {
+    d_m <- compute_mean_distance_from_half(m_weights)
+    d_g <- compute_mean_distance_from_half(g_weights)
+    lambda <- d_g/(d_m + d_g)
+  }
+  out <- lambda * g_weights + (1 - lambda) * m_weights
   return(out)
+}
+
+
+#' Get marginal mixture weights
+#'
+#' Fit a marginal mixture model; get the (correctly oriented) weights
+#'
+#' @param v a vector (of mRNA or gRNA counts)
+#' @param fam family object describing the counts
+#' @param offset optional vector of linear offsets
+#'
+#' @return the EM weights
+get_marginal_mixture_weights <- function(v, fam, offset) {
+  flex_fit <- flexmix::flexmix(v ~ 1, k = 2,
+                               model = flexmix::FLXglm(family = fam$flexmix_fam,
+                                                       offset = offset))
+  w_matrix <- flex_fit@posterior$scaled
+  w <- if (sum(w_matrix[,1]) <= sum(w_matrix[,2])) w_matrix[,1] else w_matrix[,2]
+  return(w)
+}
+
+
+#' Append noise to weights
+#'
+#' Adds Gaussian noise to an initial weight vector.
+#'
+#' @param w initial weight vector
+#' @param n_rep number of noisy columns to append to w
+#' @param sd standard deviation of noise
+#'
+#' @return initial weight matrix
+append_noise_to_weights <- function(w, n_rep, sd) {
+  initial_Ti1_matrix <- replicate(n = n_rep, {
+    noise <- stats::rnorm(n = length(w), mean = 0, sd = sd)
+    out <- w + noise
+    out[out > 1] <- 1; out[out < 0] <- 0
+    out
+  }) %>% cbind(w, .)
+  return(initial_Ti1_matrix)
+}
+
+
+compute_mean_distance_from_half <- function(v) {
+  n <- length(v)
+  sum((v - 0.5)^2)/n
 }

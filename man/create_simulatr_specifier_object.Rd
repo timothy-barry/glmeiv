@@ -37,14 +37,16 @@ fixed_params <- list(
  seed = 4,
  n = 2000,
  B = 2000,
- n_processors = 5,
+ n_processors = 10,
  m_intercept = 1,
  g_intercept = -2,
  m_fam = poisson(),
  g_fam = poisson(),
  alpha = 0.95,
  n_em_rep = 0.05,
- p_flip = 0.01
+ p_flip = 0.01,
+ lambda = NULL,
+ sd = 0.15
 )
 
 # simulation study 1: no covariates

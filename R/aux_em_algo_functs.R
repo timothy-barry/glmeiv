@@ -14,61 +14,50 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 }
 
 
-#' Run em algorithm for simulatr using optimal threshold initialization
+#' Run EM algorithm -- mixture model initialization
 #'
-#' @param dat_list a list of data frames, each of which has columns m, g, p.
-#' @param g_intercept the intercept for the gRNA model.
-#' @param g_perturbation the perturbation coefficient for the gRNA model.
-#' @param g_fam family object describing gRNA model.
-#' @param m_fam family object describing mRNA model.
-#' @param pi probability of perturbation
-#' @param covariate_matrix data frame of technical factors; can be null
-#' @param g_covariate_coefs technical factor coefficients for gRNA model
-#' @param m_offset optional offset vector for mRNA model
-#' @param g_offset optional offset vector for gRNA model
-#' @param alpha (1-alpha)% CIs returned
-#' @param n_em_rep number of EM algorithm runs to conduct
-#' @param p_flip probability of flipping a given initialization weight.
+#' @param dat the count data; should have columns m and g.
+#' @param g_fam family object used to model gRNA counts.
+#' @param m_fam family object used to model mRNA counts.
+#' @param covariate_matrix optional matrix of covariates
+#' @param m_offset optional offsets for mRNA model
+#' @param g_offset optional offsets for gRNA model
+#' @param alpha returns a (1-alpha)% confidence interval
+#' @param n_em_rep number of replicates of em algorithm
+#' @param sd sd of noise to add to initial weights
 #'
-#' @return a data frame with columns parameter, target, value, and run_id
+#' @return a tibble with columns parameter, target (fields estimate, std_error, p-value, confint lower, and confint higher), and value.
 #' @export
 #'
 #' @examples
 #' \dontrun{
 #' library(magrittr)
 #' m_fam <- g_fam <- poisson() %>% augment_family_object()
-#' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
-#' pi <- 0.2; n <- 1000; B <- 500; alpha <- 0.95; n_em_rep <- 5; p_flip <- 0.01
+#' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -1; g_perturbation <- 2
+#' pi <- 0.2; n <- 2000; B <- 5; alpha <- 0.95; n_em_rep <- 3;
+#' sd <- 0.15; lambda <- NULL
 #' m_offset <- g_offset <- NULL
 #' m_covariate_coefs <- g_covariate_coefs <- covariate_matrix <- NULL
 #' dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,
 #' g_intercept, g_perturbation, pi, n, B, covariate_matrix,
 #' m_covariate_coefs, g_covariate_coefs, m_offset, g_offset)
-#' run_em_algo_simulatr_optimal_thresh(dat_list, g_intercept, g_perturbation,
-#' g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset,
-#' alpha, n_em_rep, p_flip)
+#' dat <- dat_list[[1]]
+#' run_em_algo_mixture_init(dat, g_fam, m_fam, covariate_matrix,
+#' m_offset, g_offset, alpha, n_em_rep, sd)
 #' }
-run_em_algo_simulatr_optimal_thresh <- function(dat_list, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha, n_em_rep, p_flip) {
-  # first, obtain the optimal boundary
-  bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
-  n_datasets <- length(dat_list)
-  n <- nrow(dat_list[[1]])
-  res_list <- lapply(X = seq(1, n_datasets), FUN = function(i) {
-    dat <- dat_list[[i]]
-    g <- dat$g
-    phat <- as.integer(g > bdy)
-    if (all(phat == 1) || all(phat == 0)) { # just randomly initialize instead
-      initial_Ti1_matrix <- replicate(n = n_em_rep, random_initialization(n, pi))
-    } else {
-      initial_Ti1_matrix <- cbind(phat, replicate(n_em_rep - 1, flip_weights(phat, p_flip)))
-    }
-    em_fit <- run_em_algo_multiple_inits(m = dat$m, g = dat$g, m_fam = m_fam, g_fam = g_fam,
-                                                  covariate_matrix = covariate_matrix, initial_Ti1_matrix = initial_Ti1_matrix,
-                                                  m_offset = m_offset, g_offset = g_offset, return_best = TRUE)
-    s <- run_inference_on_em_fit(em_fit, alpha) %>% dplyr::rename("parameter" = "variable")
-    tidyr::pivot_longer(s, cols = -parameter, names_to = "target") %>%
-      dplyr::add_row(parameter = "information", target = "converged", value = em_fit$converged) %>%
-      dplyr::mutate(run_id = i)
-  })
-  return(do.call(rbind, res_list))
+run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offset, g_offset, alpha, n_em_rep, sd = 0.15, lambda = NULL) {
+  m <- dat$m
+  g <- dat$g
+  # obtain initial weights
+  w <- initialize_weights_using_marginal_mixtures(m = m, g = g, m_fam = m_fam, g_fam = g_fam, m_offset = m_offset, g_offset = g_offset, lambda = lambda)
+  # obtain initial weight matrix by adding noise
+  initial_Ti1_matrix <- append_noise_to_weights(w, n_em_rep - 1, sd)
+  em_fit <- run_em_algo_multiple_inits(m, g = g, m_fam = m_fam, g_fam = g_fam, covariate_matrix = covariate_matrix,
+                                       initial_Ti1_matrix = initial_Ti1_matrix, m_offset = m_offset,
+                                       g_offset = g_offset, return_best = TRUE)
+  s <- run_inference_on_em_fit(em_fit, alpha) %>% dplyr::rename("parameter" = "variable")
+  membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
+  tidyr::pivot_longer(s, cols = -parameter, names_to = "target") %>%
+    dplyr::add_row(parameter = "meta", target = "converged", value = em_fit$converged) %>%
+    dplyr::add_row(parameter = "meta", target = "membership_probability_spread", value = membership_prob_spread)
 }

@@ -9,38 +9,6 @@
 #'
 #' @return a simulatr_specifier object
 #' @export
-#'
-#' @examples
-#' \dontrun{
-#' library(simulatr)
-#' param_grid <- create_param_grid(varying_values = list(pi = seq(0.0, 0.5, 0.05),
-#' m_perturbation = seq(0.0, -2, -0.2),
-#' g_perturbation = seq(0.0, 3, 0.25)),
-#' baseline_values = list(pi = 0.25, m_perturbation = -2, g_perturbation = 3))
-#' fixed_params <- list(
-#'  seed = 4,
-#'  n = 2000,
-#'  B = 2000,
-#'  n_processors = 5,
-#'  m_intercept = 1,
-#'  g_intercept = -2,
-#'  m_fam = poisson(),
-#'  g_fam = poisson(),
-#'  alpha = 0.95,
-#'  n_em_rep = 0.05,
-#'  p_flip = 0.01
-#' )
-#'
-#' # simulation study 1: no covariates
-#' covariate_sampler <- NULL
-#'
-#' # simulation study 2: covariates present
-#' covariate_sampler <- list(lib_size = function(n) rpois(n, 10),
-#'                           p_mito = function(n) runif(n, 0, 10))
-#' fixed_params[["m_covariate_coefs"]] <- c(0.2, -0.1)
-#' fixed_params[["g_covariate_coefs"]] <- c(0.1, -0.2)
-#' create_simulatr_specifier_object(param_grid, fixed_params, covariate_sampler)
-#' }
 create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times, covariate_sampler = NULL) {
   ############################################
   # 1. Create covariate_matrix (if necessary);
@@ -80,11 +48,10 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
   ###############################
   # 4. Define EM algorithm method
   ###############################
-  em_method_object <- simulatr::simulatr_function(f = run_em_algo_simulatr_optimal_thresh,
-                                                  arg_names = c("g_intercept", "g_perturbation", "g_fam", "m_fam", "pi", "covariate_matrix",
-                                                                "g_covariate_coefs", "m_offset", "g_offset", "alpha", "n_em_rep", "p_flip"),
+  em_method_object <- simulatr::simulatr_function(f = run_em_algo_mixture_init,
+                                                  arg_names = c("g_fam", "m_fam", "covariate_matrix", "m_offset", "g_offset", "alpha", "n_em_rep", "sd", "lambda"),
                                                   packages = "glmeiv",
-                                                  loop = FALSE,
+                                                  loop = TRUE,
                                                   one_rep_time = one_rep_times[["em"]])
 
   #############################
