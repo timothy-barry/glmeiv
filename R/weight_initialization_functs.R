@@ -59,7 +59,8 @@ initialize_weights_using_marginal_mixtures <- function(m, g, m_fam, g_fam, m_off
   if (is.null(lambda)) {
     d_m <- compute_mean_distance_from_half(m_weights)
     d_g <- compute_mean_distance_from_half(g_weights)
-    lambda <- d_g/(d_m + d_g)
+    d_sum <- d_m + d_g
+    lambda <- if (d_sum < 1e-10) 1 else d_g/(d_sum)
   }
   out <- lambda * g_weights + (1 - lambda) * m_weights
   return(out)
@@ -79,8 +80,12 @@ get_marginal_mixture_weights <- function(v, fam, offset) {
   flex_fit <- flexmix::flexmix(v ~ 1, k = 2,
                                model = flexmix::FLXglm(family = fam$flexmix_fam,
                                                        offset = offset))
-  w_matrix <- flex_fit@posterior$scaled
-  w <- if (sum(w_matrix[,1]) <= sum(w_matrix[,2])) w_matrix[,1] else w_matrix[,2]
+  if (flex_fit@k == 1) {
+    w <- rep(0.5, length(v))
+  } else {
+    w_matrix <- flex_fit@posterior$scaled
+    w <- if (sum(w_matrix[,1]) <= sum(w_matrix[,2])) w_matrix[,1] else w_matrix[,2]
+  }
   return(w)
 }
 

@@ -52,12 +52,19 @@ run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offs
   w <- initialize_weights_using_marginal_mixtures(m = m, g = g, m_fam = m_fam, g_fam = g_fam, m_offset = m_offset, g_offset = g_offset, lambda = lambda)
   # obtain initial weight matrix by adding noise
   initial_Ti1_matrix <- append_noise_to_weights(w, n_em_rep - 1, sd)
-  em_fit <- run_em_algo_multiple_inits(m, g = g, m_fam = m_fam, g_fam = g_fam, covariate_matrix = covariate_matrix,
+  em_fit <- run_em_algo_multiple_inits(m = m, g = g, m_fam = m_fam, g_fam = g_fam, covariate_matrix = covariate_matrix,
                                        initial_Ti1_matrix = initial_Ti1_matrix, m_offset = m_offset,
                                        g_offset = g_offset, return_best = TRUE)
-  s <- run_inference_on_em_fit(em_fit, alpha) %>% dplyr::rename("parameter" = "variable")
+  # compute fit confidence metrics
   membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
-  tidyr::pivot_longer(s, cols = -parameter, names_to = "target") %>%
-    dplyr::add_row(parameter = "meta", target = "converged", value = em_fit$converged) %>%
-    dplyr::add_row(parameter = "meta", target = "membership_probability_spread", value = membership_prob_spread)
+  n_approx_1 <- sum(em_fit$posterior_perturbation_probs > 0.85)
+  n_approx_0 <- sum(em_fit$posterior_perturbation_probs < 0.15)
+  # do inference
+  s <- run_inference_on_em_fit(em_fit, alpha) %>% dplyr::rename("parameter" = "variable")
+  # output result
+  meta_df <- tibble::tibble(parameter = "meta",
+                            target = c("converged", "membership_probability_spread", "n_approx_0", "n_approx_1"),
+                            value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1))
+  out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
+  return(out)
 }

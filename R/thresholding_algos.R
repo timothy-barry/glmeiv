@@ -44,29 +44,38 @@ run_thresholding_method_simulatr <- function(dat_list, g_intercept, g_perturbati
   bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
   n_datasets <- length(dat_list)
   n <- nrow(dat_list[[1]])
+  lower_try_thresh <- 0.01 * n; upper_try_thresh <- 0.99 * n
   res_list <- lapply(X = seq(1, n_datasets), FUN = function(i) {
     dat <- dat_list[[i]]
     g <- dat$g
     phat <- as.integer(g > bdy)
-    if (all(phat == 1) || all(phat == 0)) { # return NULL
-      return (NULL)
+    s_phat <- sum(phat)
+    if (s_phat <= lower_try_thresh || s_phat >= upper_try_thresh) { # too unbalanced; do not attempt fit
+      out <- data.frame(parameter = "meta",
+                        target = c("fit_attempted", "sum_phat"),
+                        value = c(0, s_phat),
+                        run_id = i)
+    } else {
+      # next, create the data matrix
+      data_mat <- data.frame(m = dat$m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
+      # fit model
+      fit <- stats::glm(formula = m ~ ., data = data_mat, family = m_fam, offset = m_offset)
+      # get the effect size estimates and standard errors
+      s <- summary(fit)$coefficients
+      row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
+      cis <- suppressMessages(stats::confint(fit, level = alpha))
+      out <- data.frame(parameter = paste0("m_", row.names(s)),
+                 estimate = s[,"Estimate"],
+                 std_error = s[,"Std. Error"],
+                 p_value = if (m_fam$family == "gaussian") s[,"Pr(>|t|)"] else s[,"Pr(>|z|)"],
+                 confint_lower = cis[,1],
+                 confint_higher = cis[,2]) %>%
+        tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
+        dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%
+        dplyr::add_row(parameter = "meta", target = "sum_phat", value = s_phat) %>%
+        dplyr::mutate(run_id = i)
     }
-    # next, create the data matrix
-    data_mat <- data.frame(m = dat$m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
-    # fit model
-    fit <- stats::glm(formula = m ~ ., data = data_mat, family = m_fam, offset = m_offset)
-    # get the effect size estimates and standard errors
-    s <- summary(fit)$coefficients
-    row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
-    cis <- suppressMessages(stats::confint(fit, level = alpha))
-    data.frame(parameter = paste0("m_", row.names(s)),
-               estimate = s[,"Estimate"],
-               std_error = s[,"Std. Error"],
-               p_value = if (m_fam$family == "gaussian") s[,"Pr(>|t|)"] else s[,"Pr(>|z|)"],
-               confint_lower = cis[,1],
-               confint_higher = cis[,2]) %>%
-      tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
-      dplyr::mutate(run_id = i)
+    return(out)
   })
   return(do.call(rbind, res_list))
 }

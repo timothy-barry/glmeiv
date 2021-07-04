@@ -26,37 +26,3 @@ a simulatr_specifier object
 \description{
 Creates a simulatr_specifier object to run a simulation.
 }
-\examples{
-\dontrun{
-library(simulatr)
-param_grid <- create_param_grid(varying_values = list(pi = seq(0.0, 0.5, 0.05),
-m_perturbation = seq(0.0, -2, -0.2),
-g_perturbation = seq(0.0, 3, 0.25)),
-baseline_values = list(pi = 0.25, m_perturbation = -2, g_perturbation = 3))
-fixed_params <- list(
- seed = 4,
- n = 2000,
- B = 2000,
- n_processors = 10,
- m_intercept = 1,
- g_intercept = -2,
- m_fam = poisson(),
- g_fam = poisson(),
- alpha = 0.95,
- n_em_rep = 0.05,
- p_flip = 0.01,
- lambda = NULL,
- sd = 0.15
-)
-
-# simulation study 1: no covariates
-covariate_sampler <- NULL
-
-# simulation study 2: covariates present
-covariate_sampler <- list(lib_size = function(n) rpois(n, 10),
-                          p_mito = function(n) runif(n, 0, 10))
-fixed_params[["m_covariate_coefs"]] <- c(0.2, -0.1)
-fixed_params[["g_covariate_coefs"]] <- c(0.1, -0.2)
-create_simulatr_specifier_object(param_grid, fixed_params, covariate_sampler)
-}
-}
