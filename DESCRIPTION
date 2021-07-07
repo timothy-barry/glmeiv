@@ -17,7 +17,9 @@ Imports:
     dplyr,
     magrittr,
     tidyr,
-    simulatr
-Suggests: 
-    ggplot2,
+    simulatr,
+    flexmix,
+    tibble,
     cowplot
+Suggests: 
+    ggplot2
