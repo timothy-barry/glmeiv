@@ -1,7 +1,7 @@
 Package: glmeiv
 Title: Implements the GLM-EIV model and method
 Version: 0.0.1
-Authors@R: 
+Authors@R:
     person(given = "Tim",
            family = "Barry",
            role = c("aut", "cre"),
@@ -12,7 +12,7 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
-Imports: 
+Imports:
     MASS,
     dplyr,
     magrittr,
@@ -20,6 +20,6 @@ Imports:
     simulatr,
     flexmix,
     tibble
-Suggests: 
+Suggests:
     ggplot2,
     cowplot
