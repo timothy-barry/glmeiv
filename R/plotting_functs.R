@@ -1,44 +1,127 @@
-#' Plot count distribution
+#' Get DFs for mixture plots
 #'
-#' Plots the distribution of m or g counts, colored by perturbation status.
+#' Returns DFs to plot the mixture distributions.
 #'
-#' @param generated_data a list containing p, m, and/r g.
-#' @param modality either "mRNA" or "gRNA"
+#' @param sim_spec a simulatr specifier object
+#' @param x_grid grid over which to compute the density
 #'
-#' @return a ggplot of the histogram
+#' @return a list containing DFs to plot and optimal thresholds for both mRNA and gRNA
 #' @export
-#'
-#' @examples
-#' \dontrun{
-#' n <- 10000
-#' m_fam <- g_fam <- poisson()
-#' pi <- 0.4
-#' covariate_matrix <- NULL
-#' m_coef <- c(1, -2)
-#' g_coef <- c(-2, 3)
-#' generated_data <- generate_data_from_model(m_fam, g_fam,
-#' m_coef, g_coef, pi, covariate_matrix, n = n)
-#' p <- plot_count_distribution(generated_data, "gRNA")
-#' plot(p)
-#' }
-plot_count_distribution <- function(generated_data, modality) {
-  df <- data.frame(p = factor(x = generated_data$p,  levels = c(1, 0), labels = c("Perturbation", "No perturbation")),
-                   counts = if (modality == "mRNA") generated_data$m else generated_data$g)
-  cols <- if (modality == "mRNA") c("dodgerblue4", "deepskyblue1") else c("red", "coral")
-  p <- ggplot2::ggplot(data = df, mapping = ggplot2::aes(x = counts)) +
-    ggplot2::geom_histogram(ggplot2::aes(y=..count.., fill = p), binwidth = 1, alpha = 0.7, position = "identity", color = "black") +
-    ggplot2::geom_density(alpha = 0.6, adjust = 2) + ggplot2::xlab("UMIs in cell") +
-    cowplot::theme_half_open(font_size = 11) + ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.05))) +
-    ggplot2::theme(legend.position = c(0.6, 0.8), legend.title = ggplot2::element_blank()) + ggplot2::labs(title = modality) + ggplot2::scale_fill_manual(values = cols)
+get_theoretical_densities_and_thresholds <- function(sim_spec, xgrid) {
+  # extract m_pert, m_intercept, g_pert, g_intercept, and pi.
+  params <- c("m_intercept", "m_perturbation", "g_intercept", "g_perturbation", "pi")
+  param_list <- vector(mode = "list", length = length(params))
+  # extract the family objects (assuming these are fixed parameters)
+  for (i in seq(1, length(params))) {
+    param_list[[i]] <- simulatr::get_param_from_simulatr_spec(simulatr_spec = sim_spec, row_idx = NULL, param = params[i])
+  }
+  names(param_list) <- params
+  # put all the parameters into a data frame
+  param_df <- as.data.frame(param_list)
+  # extract m_fam, g_fam
+  m_fam <- simulatr::get_param_from_simulatr_spec(simulatr_spec = sim_spec, row_idx = NULL, param = "m_fam")
+  g_fam <- simulatr::get_param_from_simulatr_spec(simulatr_spec = sim_spec, row_idx = NULL, param = "g_fam")
+  # obtain Bayes optimal threshold for each param setting
+  n_param_settings <- nrow(param_df)
+  # compute plotting data frames
+  get_data_frames_to_plot <- function(param_df, fam, modality) {
+    fam <- augment_family_object(fam)
+    perturbation_name <- paste0(modality, "_perturbation")
+    intercept_name <- paste0(modality, "_intercept")
+    # compute theoretical conditional means
+    conditonal_means <- apply(X = param_df, MARGIN = 1, FUN = function(r) {
+      compute_theoretical_conditional_means(intercept = r[[intercept_name]],
+                                            perturbation_coef = r[[perturbation_name]],
+                                            fam = fam) %>% unlist()
+    }) %>% t()
+    # obtain the list of density data frames
+    plotting_dfs <- lapply(seq(1, nrow(param_df)), function(i) {
+      mu0 <- conditonal_means[[i, "mu0"]]
+      mu1 <- conditonal_means[[i, "mu1"]]
+      pi <- param_df[[i, "pi"]]
+      f0 <- fam$density(mu = mu0, xgrid = xgrid) * (1 - pi)
+      f1 <- fam$density(mu = mu1, xgrid = xgrid) * pi
+      f <- f0 + f1
+      rbind(tibble::tibble(f = f0, x = xgrid, component = "Perturbation 0"),
+            tibble::tibble(f = f1, x = xgrid, component = "Perturbation 1"),
+            tibble::tibble(f = f, x = xgrid, component = "Marginal")) %>%
+        dplyr::mutate(component = factor(component, levels = c("Marginal", "Perturbation 0", "Perturbation 1"))) %>%
+        dplyr::arrange(component)
+    })
+    optimal_thresh <- sapply(seq(1, nrow(param_df)), function(i) {
+      fam$bayes_classifier(mu0 = conditonal_means[[i, "mu0"]],
+                           mu1 =  conditonal_means[[i, "mu1"]],
+                           pi = param_df[[i, "pi"]])
+      })
+    list(plotting_dfs = plotting_dfs, optimal_thresh = optimal_thresh)
+  }
+  m_out <- get_data_frames_to_plot(param_df, m_fam, "m")
+  g_out <- get_data_frames_to_plot(param_df, g_fam, "g")
+  out <- list(m_dfs = m_out$plotting_dfs,
+       m_thresholds = m_out$optimal_thresh,
+       g_dfs = g_out$plotting_dfs,
+       g_threshold = g_out$optimal_thresh)
+  return(out)
 }
 
 
-plot_em_runs <- function(em_runs) {
-  to_plot <- lapply(seq(1, length(em_runs)), function(i) {
-    curr_log_liks <- em_runs[[i]]$log_liks
-    data.frame(log_lik = curr_log_liks, iteration = seq(1, length(curr_log_liks))) %>%
-      dplyr::mutate(run = i)
-    }) %>% do.call(what = rbind, args = .) %>% dplyr::mutate(run = factor(run))
-  ggplot2::ggplot(to_plot %>% dplyr::filter(iteration >= 3), ggplot2::aes(x = iteration, y = log_lik, col = run)) +
-    ggplot2::geom_line() + ggplot2::theme_bw()
+#' Plot all arms
+#'
+#' @param summarized_results summarized results (as outputted by summarize_results) data frame in tibble form.
+#' @param parameter parameter to plot
+#' @param metric metric to plot
+#' @param ylim (optional) ylim
+#' @param plot_discont_points (default false) plot vertical lines showing the points where the threshold changes discontinuously? If TRUE, g_thresh must be present as a column in the summarized_results df.
+#'
+#' @return
+plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE) {
+  arms <- grep(pattern = "^arm_", x = colnames(summarized_results), value = TRUE) %>% gsub(pattern = "^arm_", replacement = "", x = .)
+  summarized_results_sub <- dplyr::filter(summarized_results, parameter == !!parameter)
+  y_int <- switch(metric, "bias" = 0, "coverage" = 0.95, "count" = NULL, "mse" = 0, "se" = 0)
+  ps <- lapply(arms, function(arm) {
+    arm_name <- paste0("arm_", arm)
+    to_plot <- dplyr::filter(summarized_results_sub, !!as.symbol(arm_name) & metric == !!metric)
+    other_arms <- arms[ !(arms == arm) ]
+    title <- sapply(other_arms, function(other_arm) paste0(other_arm, " = ", to_plot[[other_arm]][1]))
+    title <- paste0(paste0(title, collapse = ", "))
+    if (plot_discont_points) {
+      to_plot_thresh <- to_plot %>% dplyr::filter(method == "thresholding") %>% dplyr::arrange(arm)
+      g_thresh_floor <- to_plot_thresh %>% dplyr::pull(g_thresh) %>% floor()
+      diff_thresh <- c(diff(g_thresh_floor), 0)
+      xintercepts <- to_plot_thresh[which(diff_thresh != 0), arm] %>% dplyr::pull()
+    }
+    p <- ggplot2::ggplot(to_plot, ggplot2::aes(x = !!as.symbol(arm), y = value, col = method)) +
+      ggplot2::geom_hline(yintercept = y_int, lwd = 0.6) +
+      (if (plot_discont_points) ggplot2::geom_vline(xintercept = xintercepts, lwd = 0.3, col = "lightslategray")) +
+      ggplot2::geom_point() + ggplot2::geom_line() + ggplot2::ylab(metric) +
+      ggplot2::geom_errorbar(ggplot2::aes(ymin = lower_mc_ci, ymax = upper_mc_ci), width = 0) +
+      ggplot2::theme_bw() + ggplot2::theme(plot.title = ggplot2::element_text(size = 11, hjust = 0.5)) +
+      ggplot2::ggtitle(title) + (if (is.null(ylim)) NULL else ggplot2::ylim(ylim)) +
+      ggplot2::scale_color_manual(values = c("dodgerblue3", "firebrick1"), breaks = c("em", "thresholding"))
+    l <- cowplot::get_legend(p + ggplot2::theme(legend.position = "bottom"))
+    p_out <- p + ggplot2::theme(legend.position = "none")
+    return(list(plot = p_out, legend = l, n_method = to_plot$method %>% unique() %>% length()))
+  })
+  n_ps <- length(ps)
+  legend_idx <- which.max(sapply(ps, function(i) i$n_method))
+  vert_plot <- cowplot::plot_grid(plotlist = lapply(ps, function(i) i$plot),
+                                  align = "v", axis = "l", nrow = n_ps, labels = letters[1:n_ps])
+  out <- cowplot::plot_grid(vert_plot, ps[[legend_idx]]$legend, ncol = 1, rel_heights = c(1, .1))
+  return(out)
+}
+
+
+#' Plot mixture
+#'
+#' Plots a mixture distribution.
+#'
+#' @param density_df a density df as outputted by "get_theoretical_densities_and_thresholds."
+#' @param thresh a threshold to plot as a vertical line
+#'
+#' @return a ggplot object
+#' @export
+plot_mixture <- function(density_df, thresh = NULL, x_max = NULL, points = TRUE) {
+  if (!is.null(x_max)) density_df <- dplyr::filter(density_df, x <= x_max)
+  p <- ggplot2::ggplot(data = density_df, mapping = ggplot2::aes(x = x, y = f, col = component)) + (if (!is.null(thresh)) ggplot2::geom_vline(xintercept = thresh, lwd = 0.3) else NULL) + ggplot2::geom_line() + (if (points) ggplot2::geom_point() else NULL) + ggplot2::theme_bw() + ggplot2::ylab("Density")
+  return(p)
 }

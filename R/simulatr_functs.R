@@ -49,7 +49,7 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
   # 4. Define EM algorithm method
   ###############################
   em_method_object <- simulatr::simulatr_function(f = run_em_algo_mixture_init,
-                                                  arg_names = c("g_fam", "m_fam", "covariate_matrix", "m_offset", "g_offset", "alpha", "n_em_rep", "sd", "lambda"),
+                                                  arg_names = c("g_fam", "m_fam", "covariate_matrix", "m_offset", "g_offset", "alpha", "n_em_rep", "sd", "save_weights_prob", "lambda"),
                                                   packages = "glmeiv",
                                                   loop = TRUE,
                                                   one_rep_time = one_rep_times[["em"]])

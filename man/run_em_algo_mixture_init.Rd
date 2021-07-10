@@ -35,6 +35,8 @@ run_em_algo_mixture_init(
 \item{n_em_rep}{number of replicates of em algorithm}
 
 \item{sd}{sd of noise to add to initial weights}
+
+\item{lambda}{mixing parameter for weighted average of weights; default NULL chooses mixing parameter adaptively.}
 }
 \value{
 a tibble with columns parameter, target (fields estimate, std_error, p-value, confint lower, and confint higher), and value.

@@ -53,6 +53,7 @@ augment_negbinom_family_object <- function(f) {
   f$bayes_classifier <- function(mu0, mu1, pi) (theta * (log(mu0 + theta) - log(mu1 + theta)) + log(pi) - log(1 - pi))/(log(mu0 * (mu1 + theta)) - log(mu1 * (mu0 + theta)))
   f$get_log_lik <- function(object) glm_log_lik(object)
   f$flexmix_fam <- "poisson"
+  f$density <- function(mu, xgrid) stats::dnbinom(x = xgrid, size = theta, mu = mu)
   return(f)
 }
 
@@ -68,6 +69,7 @@ augment_poisson_family_object <- function(f) {
   f$bayes_classifier <- function(mu0, mu1, pi) (mu0 - mu1 + log(pi) - log(1 - pi))/(log(mu0) - log(mu1))
   f$get_log_lik <- function(object) glm_log_lik(object)
   f$flexmix_fam <- "poisson"
+  f$density <- function(mu, xgrid) stats::dpois(x = xgrid, lambda = mu)
   return(f)
 }
 
@@ -83,5 +85,6 @@ augment_gaussian_family_object <- function(f) {
   f$bayes_classifier <- function(mu0, mu1, pi) ((1/2) * (mu0^2 - mu1^2) + log(pi) - log(1 - pi))/(mu0 - mu1)
   f$get_log_lik <- function(object) lm_log_lik(object)
   f$flexmix_fam <- "gaussian"
+  f$density <- function(mu, xgrid) stats::dnorm(x = xgrid, mean = mu)
   return(f)
 }
