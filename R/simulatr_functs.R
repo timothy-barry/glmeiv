@@ -49,7 +49,7 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
   # 4. Define EM algorithm method
   ###############################
   em_method_object <- simulatr::simulatr_function(f = run_em_algo_mixture_init,
-                                                  arg_names = c("g_fam", "m_fam", "covariate_matrix", "m_offset", "g_offset", "alpha", "n_em_rep", "sd", "save_weights_prob", "lambda"),
+                                                  arg_names = c("g_fam", "m_fam", "covariate_matrix", "m_offset", "g_offset", "alpha", "n_em_rep", "sd", "save_membership_probs_mult", "lambda"),
                                                   packages = "glmeiv",
                                                   loop = TRUE,
                                                   one_rep_time = one_rep_times[["em"]])
@@ -61,7 +61,8 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
   ret <- simulatr::simulatr_specifier(parameter_grid = param_grid,
                                fixed_parameters = fixed_params,
                                generate_data_function = data_generator_object,
-                               run_method_functions = list(thresholding = thresholding_method_object, em = em_method_object))
+                               run_method_functions = list(thresholding = thresholding_method_object,
+                                                           em = em_method_object))
   return(ret)
 }
 
@@ -115,7 +116,9 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
   g_matrix <- generate_glm_data_sim(g_intercept, g_perturbation, perturbation_indicators, g_fam, covariate_matrix, g_covariate_coefs, g_offset, n, B)
   # Finally, create the data list
   data_list <- sapply(seq(1, B), function(i) {
-    data.frame(m = m_matrix[,i], g = g_matrix[,i], p = perturbation_indicators[,i])
+    df <- data.frame(m = m_matrix[,i], g = g_matrix[,i], p = perturbation_indicators[,i])
+    attr(df, "i") <- i
+    return(df)
   }, simplify = FALSE)
   return(data_list)
 }

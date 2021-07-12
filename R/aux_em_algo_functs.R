@@ -46,7 +46,7 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 #' run_em_algo_mixture_init(dat, g_fam, m_fam, covariate_matrix,
 #' m_offset, g_offset, alpha, n_em_rep, sd)
 #' }
-run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offset, g_offset, alpha, n_em_rep, sd = 0.15, save_weights_prob = 0.02, lambda = NULL) {
+run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offset, g_offset, alpha, n_em_rep, sd = 0.15, save_membership_probs_mult = 250, lambda = NULL) {
   m <- dat$m
   g <- dat$g
   # obtain initial weights
@@ -67,8 +67,9 @@ run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offs
                             target = c("converged", "membership_probability_spread", "n_approx_0", "n_approx_1"),
                             value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1))
   out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
-  # with probability save_weights_prob, save the posterior membership weights
-  if (rbinom(1, 1, save_weights_prob)) {
+  # if i is a multiple of 250, save the posterior membership probabilities
+  i <- attr(dat, "i")
+  if ((i - 1 + save_membership_probs_mult) %% save_membership_probs_mult == 0) {
     out <- rbind(out, data.frame(parameter = "meta",
                                  target = "membership_prob",
                                  value = em_fit$posterior_perturbation_probs))
