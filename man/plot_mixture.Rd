@@ -4,7 +4,7 @@
 \alias{plot_mixture}
 \title{Plot mixture}
 \usage{
-plot_mixture(density_df, thresh = NULL)
+plot_mixture(density_df, thresh = NULL, x_max = NULL, points = TRUE)
 }
 \arguments{
 \item{density_df}{a density df as outputted by "get_theoretical_densities_and_thresholds."}

@@ -72,25 +72,34 @@ get_theoretical_densities_and_thresholds <- function(sim_spec, xgrid) {
 #' @param metric metric to plot
 #' @param ylim (optional) ylim
 #' @param plot_discont_points (default false) plot vertical lines showing the points where the threshold changes discontinuously? If TRUE, g_thresh must be present as a column in the summarized_results df.
+#' @param arm_info (optional) a list containing information about the arms; entries sohuld be "arm_names," "varying_param," and "all_params;" if empty, will be guessed from column names.
 #'
 #' @return
-plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE) {
-  arms <- grep(pattern = "^arm_", x = colnames(summarized_results), value = TRUE) %>% gsub(pattern = "^arm_", replacement = "", x = .)
-  summarized_results_sub <- dplyr::filter(summarized_results, parameter == !!parameter)
+plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE, arm_info = NULL) {
+  if (is.null(arm_info)) {
+    arm_info <- list()
+    arm_info$arm_names <- grep(pattern = "^arm", x = colnames(summarized_results), value = TRUE)
+    arm_info$varying_param <- gsub(pattern = "^arm_", replacement = "", x = arm_info$arm_names)
+    arm_info$all_params <- arm_info$varying_param
+  }
+
+  summarized_results_sub <- dplyr::filter(summarized_results, parameter == !!parameter, metric == !!metric)
   y_int <- switch(metric, "bias" = 0, "coverage" = 0.95, "count" = NULL, "mse" = 0, "se" = 0)
-  ps <- lapply(arms, function(arm) {
-    arm_name <- paste0("arm_", arm)
-    to_plot <- dplyr::filter(summarized_results_sub, !!as.symbol(arm_name) & metric == !!metric)
-    other_arms <- arms[ !(arms == arm) ]
-    title <- sapply(other_arms, function(other_arm) paste0(other_arm, " = ", to_plot[[other_arm]][1]))
-    title <- paste0(paste0(title, collapse = ", "))
+  arms <- arm_info$arm_names
+  ps <- lapply(seq(1, length(arms)), function(i) {
+    arm <- arms[i]
+    varying_param <- arm_info$varying_param[i]
+    fixed_params <- arm_info$all_params[arm_info$all_params != varying_param]
+    to_plot <- dplyr::filter(summarized_results_sub, !!as.symbol(arm))
+    title <- sapply(fixed_params, function(fixed_param) paste0(fixed_param, " = ",
+                                                               to_plot[[fixed_param]][1])) %>% paste0(., collapse = ", ")
     if (plot_discont_points) {
       to_plot_thresh <- to_plot %>% dplyr::filter(method == "thresholding") %>% dplyr::arrange(arm)
       g_thresh_floor <- to_plot_thresh %>% dplyr::pull(g_thresh) %>% floor()
       diff_thresh <- c(diff(g_thresh_floor), 0)
-      xintercepts <- to_plot_thresh[which(diff_thresh != 0), arm] %>% dplyr::pull()
+      xintercepts <- to_plot_thresh[which(diff_thresh != 0), varying_param] %>% dplyr::pull()
     }
-    p <- ggplot2::ggplot(to_plot, ggplot2::aes(x = !!as.symbol(arm), y = value, col = method)) +
+    p <- ggplot2::ggplot(to_plot, ggplot2::aes(x = !!as.symbol(varying_param), y = value, col = method)) +
       ggplot2::geom_hline(yintercept = y_int, lwd = 0.6) +
       (if (plot_discont_points) ggplot2::geom_vline(xintercept = xintercepts, lwd = 0.3, col = "lightslategray")) +
       ggplot2::geom_point() + ggplot2::geom_line() + ggplot2::ylab(metric) +

@@ -9,11 +9,12 @@ plot_all_arms(
   parameter,
   metric,
   ylim = NULL,
-  plot_discont_points = FALSE
+  plot_discont_points = FALSE,
+  arm_info = NULL
 )
 }
 \arguments{
-\item{summarized_results}{summarized results (as outputted by summarize_results) data frame}
+\item{summarized_results}{summarized results (as outputted by summarize_results) data frame in tibble form.}
 
 \item{parameter}{parameter to plot}
 
@@ -22,6 +23,8 @@ plot_all_arms(
 \item{ylim}{(optional) ylim}
 
 \item{plot_discont_points}{(default false) plot vertical lines showing the points where the threshold changes discontinuously? If TRUE, g_thresh must be present as a column in the summarized_results df.}
+
+\item{arm_info}{(optional) a list containing information about the arms; entries sohuld be "arm_names," "varying_param," and "all_params;" if empty, will be guessed from column names.}
 }
 \value{
 

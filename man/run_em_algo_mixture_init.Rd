@@ -14,6 +14,7 @@ run_em_algo_mixture_init(
   alpha,
   n_em_rep,
   sd = 0.15,
+  save_membership_probs_mult = 250,
   lambda = NULL
 )
 }
