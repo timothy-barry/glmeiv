@@ -16,6 +16,6 @@ get_tresholding_estimator_bias <- function(m_perturbation, g_perturbation, pi) {
   w <- 1 - pnorm(c - g_perturbation)
   mean_phat <- z * (1 - pi) + w * pi
   mult_factor <- exp(log(pi) + log(w - mean_phat) - log(mean_phat) - log(1 - mean_phat))
-  bias <- m_perturbation * (1 - mult_factor)
+  bias <- m_perturbation * (1 - mult_factor) * -1
   return(bias)
 }

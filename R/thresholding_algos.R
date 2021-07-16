@@ -67,7 +67,7 @@ run_thresholding_method_simulatr <- function(dat_list, g_intercept, g_perturbati
       out <- data.frame(parameter = paste0("m_", row.names(s)),
                  estimate = s[,"Estimate"],
                  std_error = s[,"Std. Error"],
-                 p_value = if (m_fam$family == "gaussian") s[,"Pr(>|t|)"] else s[,"Pr(>|z|)"],
+                 p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],
                  confint_lower = cis[,1],
                  confint_higher = cis[,2]) %>%
         tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%

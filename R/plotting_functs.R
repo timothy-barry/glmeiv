@@ -75,7 +75,7 @@ get_theoretical_densities_and_thresholds <- function(sim_spec, xgrid) {
 #' @param arm_info (optional) a list containing information about the arms; entries sohuld be "arm_names," "varying_param," and "all_params;" if empty, will be guessed from column names.
 #'
 #' @return
-plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE, arm_info = NULL) {
+plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE, arm_info = NULL, theoretical_values = NULL) {
   if (is.null(arm_info)) {
     arm_info <- list()
     arm_info$arm_names <- grep(pattern = "^arm", x = colnames(summarized_results), value = TRUE)
@@ -99,14 +99,22 @@ plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, pl
       diff_thresh <- c(diff(g_thresh_floor), 0)
       xintercepts <- to_plot_thresh[which(diff_thresh != 0), varying_param] %>% dplyr::pull()
     }
+    theoretical_values_passed <- !is.null(theoretical_values)
+    if (theoretical_values_passed) {
+      theoretical_value_sub <- dplyr::filter(theoretical_values, arm == !!arm)
+    }
+
     p <- ggplot2::ggplot(to_plot, ggplot2::aes(x = !!as.symbol(varying_param), y = value, col = method)) +
       ggplot2::geom_hline(yintercept = y_int, lwd = 0.6) +
       (if (plot_discont_points) ggplot2::geom_vline(xintercept = xintercepts, lwd = 0.3, col = "lightslategray")) +
-      ggplot2::geom_point() + ggplot2::geom_line() + ggplot2::ylab(metric) +
+      ggplot2::geom_point() + (if (!theoretical_values_passed) ggplot2::geom_line() else NULL) + ggplot2::ylab(metric) +
       ggplot2::geom_errorbar(ggplot2::aes(ymin = lower_mc_ci, ymax = upper_mc_ci), width = 0) +
       ggplot2::theme_bw() + ggplot2::theme(plot.title = ggplot2::element_text(size = 11, hjust = 0.5)) +
       ggplot2::ggtitle(title) + (if (is.null(ylim)) NULL else ggplot2::ylim(ylim)) +
-      ggplot2::scale_color_manual(values = c("dodgerblue3", "firebrick1"), breaks = c("em", "thresholding"))
+      ggplot2::scale_color_manual(values = c("dodgerblue3", "firebrick1"), breaks = c("em", "thresholding")) +
+      (if (theoretical_values_passed) ggplot2::geom_line(data = theoretical_value_sub, mapping = ggplot2::aes(x = x, y = value), linetype = "dashed") else NULL)
+
+
     l <- cowplot::get_legend(p + ggplot2::theme(legend.position = "bottom"))
     p_out <- p + ggplot2::theme(legend.position = "none")
     return(list(plot = p_out, legend = l, n_method = to_plot$method %>% unique() %>% length()))
@@ -129,8 +137,8 @@ plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, pl
 #'
 #' @return a ggplot object
 #' @export
-plot_mixture <- function(density_df, thresh = NULL, x_max = NULL, points = TRUE) {
-  if (!is.null(x_max)) density_df <- dplyr::filter(density_df, x <= x_max)
+plot_mixture <- function(density_df, thresh = NULL, x_max = NULL, x_min = NULL, points = TRUE) {
+  if (!is.null(x_max)) density_df <- dplyr::filter(density_df, x <= x_max, x >= x_min)
   p <- ggplot2::ggplot(data = density_df, mapping = ggplot2::aes(x = x, y = f, col = component)) + (if (!is.null(thresh)) ggplot2::geom_vline(xintercept = thresh, lwd = 0.3) else NULL) + ggplot2::geom_line() + (if (points) ggplot2::geom_point() else NULL) + ggplot2::theme_bw() + ggplot2::ylab("Density")
   return(p)
 }
