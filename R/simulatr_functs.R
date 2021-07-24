@@ -191,3 +191,56 @@ compute_theoretical_conditional_means <- function(intercept, perturbation_coef, 
   mui1 <- fam$linkinv(li1)
   return(list(mu0 = mui0, mu1 = mui1))
 }
+
+
+classify_estimates_em <- function(sim_res, spread_thresh = 0.1, approx_0_thresh = 60, approx_1_thresh = 60, g_pert_lower = -0.25, g_pert_upper = Inf, m_pert_lower = -Inf, m_pert_upper = 0.25, pi_lower = 0, pi_upper = 0.3) {
+  out <- dplyr::filter(sim_res, method == "em") %>% dplyr::group_by(id) %>%
+    dplyr::summarize(
+      confident_output = (value[target == "converged"] == 1
+                          & value[target == "membership_probability_spread"] > spread_thresh
+                          & value[target == "n_approx_0"] >= approx_0_thresh
+                          & value[target == "n_approx_1"] >= approx_1_thresh),
+      g_perturbation = value[parameter == "g_perturbation" & target == "estimate"],
+      m_perturbation = value[parameter == "m_perturbation" & target == "estimate"],
+      pi = value[parameter == "pi" & target == "estimate"],
+      plausible_estimates = (g_perturbation >= g_pert_lower &
+                               g_perturbation <= g_pert_upper &
+                               m_perturbation >= m_pert_lower &
+                               m_perturbation <= m_pert_upper &
+                               pi >= pi_lower & pi <= pi_upper),
+      grid_row_id = grid_row_id[1]) %>%
+    dplyr::mutate(classification = paste0(ifelse(confident_output, "confident", "unconfident"), "-",
+                                          ifelse(plausible_estimates, "plausible", "implausible")) %>% factor(),
+                  valid = confident_output & plausible_estimates)
+  return(out)
+}
+
+
+#' Obtain valid IDs
+#'
+#' Obtains valid IDs given the output of a simulatr experiment.
+#'
+#' @param sim_res sim_res object
+#' @param spread_thresh spread threshold
+#' @param approx_0_thresh number cells approximately 0 threshold
+#' @param approx_1_thresh number cells approximately 1 threshold
+#' @param g_pert_lower minimum value for g_pert
+#' @param g_pert_upper maximum value for g_pert
+#' @param m_pert_lower minimum value for m_pert
+#' @param m_pert_upper maximum value for m_pert
+#' @param pi_lower minimum value for pi
+#' @param pi_upper maximum value for pi
+#'
+#' @return a list of length two; (i) a data frame giving the classification of each EM run, and (ii) a character vector of valid IDs for both EM and thresholding
+#' @export
+obtain_valid_ids <- function(sim_res, spread_thresh = 0.1, approx_0_thresh = 50, approx_1_thresh = 50, g_pert_lower = -0.3, g_pert_upper = Inf, m_pert_lower = -Inf, m_pert_upper = 0.3, pi_lower = 0, pi_upper = 0.5) {
+  em_df <- classify_estimates_em(sim_res, spread_thresh, approx_0_thresh, approx_1_thresh, g_pert_lower, g_pert_upper, m_pert_lower, m_pert_upper, pi_lower, pi_upper)
+  valid_thresh_ids <- sim_res %>%
+    dplyr::filter(method == "thresholding") %>%
+    dplyr::group_by(id) %>%
+    dplyr::summarize(valid_idx = (value[target == "fit_attempted"] == 1)) %>%
+    dplyr::filter(valid_idx) %>% dplyr::pull(id) %>% as.character()
+  valid_em_ids <- dplyr::filter(em_df, valid) %>% dplyr::pull(id) %>% as.character()
+  valid_ids <- c(valid_em_ids, valid_thresh_ids)
+  return(list(em_classifications = em_df, valid_ids = valid_ids))
+}

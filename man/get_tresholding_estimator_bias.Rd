@@ -19,3 +19,6 @@ the bias of the thresholding estimator
 \description{
 Assumes without loss of generality that m_intercept and g_intercept are 0. Also, assumes the Bayes-optimal threshold has been chosen.
 }
+\details{
+Assumes errors are N(0,1).
+}

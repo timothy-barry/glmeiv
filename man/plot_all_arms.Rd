@@ -10,7 +10,8 @@ plot_all_arms(
   metric,
   ylim = NULL,
   plot_discont_points = FALSE,
-  arm_info = NULL
+  arm_info = NULL,
+  theoretical_values = NULL
 )
 }
 \arguments{

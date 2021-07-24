@@ -75,7 +75,8 @@ get_theoretical_densities_and_thresholds <- function(sim_spec, xgrid) {
 #' @param arm_info (optional) a list containing information about the arms; entries sohuld be "arm_names," "varying_param," and "all_params;" if empty, will be guessed from column names.
 #'
 #' @return
-plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE, arm_info = NULL, theoretical_values = NULL) {
+#' @export
+plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE, arm_info = NULL, theoretical_values = NULL, ylab = NULL) {
   if (is.null(arm_info)) {
     arm_info <- list()
     arm_info$arm_names <- grep(pattern = "^arm", x = colnames(summarized_results), value = TRUE)
@@ -107,7 +108,7 @@ plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, pl
     p <- ggplot2::ggplot(to_plot, ggplot2::aes(x = !!as.symbol(varying_param), y = value, col = method)) +
       ggplot2::geom_hline(yintercept = y_int, lwd = 0.6) +
       (if (plot_discont_points) ggplot2::geom_vline(xintercept = xintercepts, lwd = 0.3, col = "lightslategray")) +
-      ggplot2::geom_point() + (if (!theoretical_values_passed) ggplot2::geom_line() else NULL) + ggplot2::ylab(metric) +
+      ggplot2::geom_point() + (if (!theoretical_values_passed) ggplot2::geom_line() else NULL) + (ggplot2::ylab( if (is.null(ylab)) metric else ylab[i] )) +
       ggplot2::geom_errorbar(ggplot2::aes(ymin = lower_mc_ci, ymax = upper_mc_ci), width = 0) +
       ggplot2::theme_bw() + ggplot2::theme(plot.title = ggplot2::element_text(size = 11, hjust = 0.5)) +
       ggplot2::ggtitle(title) + (if (is.null(ylim)) NULL else ggplot2::ylim(ylim)) +
@@ -137,8 +138,66 @@ plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, pl
 #'
 #' @return a ggplot object
 #' @export
-plot_mixture <- function(density_df, thresh = NULL, x_max = NULL, x_min = NULL, points = TRUE) {
+plot_mixture <- function(density_df, thresh = NULL, x_max = Inf, x_min = -Inf, points = TRUE, xlab = NULL) {
   if (!is.null(x_max)) density_df <- dplyr::filter(density_df, x <= x_max, x >= x_min)
-  p <- ggplot2::ggplot(data = density_df, mapping = ggplot2::aes(x = x, y = f, col = component)) + (if (!is.null(thresh)) ggplot2::geom_vline(xintercept = thresh, lwd = 0.3) else NULL) + ggplot2::geom_line() + (if (points) ggplot2::geom_point() else NULL) + ggplot2::theme_bw() + ggplot2::ylab("Density")
+  p <- ggplot2::ggplot(data = density_df, mapping = ggplot2::aes(x = x, y = f, col = component)) + (if (!is.null(thresh)) ggplot2::geom_vline(xintercept = thresh, lwd = 0.3) else NULL) + ggplot2::geom_line() + (if (points) ggplot2::geom_point() else NULL) + ggplot2::theme_bw() + ggplot2::ylab("Density") + (if (!is.null(xlab)) ggplot2::xlab(xlab) else NULL)
+  return(p)
+}
+
+
+#' Plot posterior membership probabilities
+#'
+#' Plots all sets of posterior membership probabilities for a given grid_row_id of a sim_res data frame.
+#'
+#' @param sim_res raw result data frame outputted by simulatr
+#' @param grid_row_id an grid row id
+#' @param valid_ids character vector of valid IDs
+#'
+#' @return a list of length 2: (i) a list of histogram plots, and (ii) a data frame storing summary metrics for each run
+#' @export
+plot_posterior_membership_probabilities <- function(sim_res, grid_row_id, valid_ids, n_approx_01 = 50) {
+  sim_res_w_mem_probs <- sim_res %>% dplyr::filter(method == "em", grid_row_id == !!grid_row_id) %>% dplyr::group_by(id) %>% dplyr::filter("membership_prob" %in% target)
+  all_runs <- sim_res_w_mem_probs %>% dplyr::group_map(.f = function(tbl, key) {
+    p <- ggplot2::ggplot(data = dplyr::filter(tbl, target == "membership_prob"),
+                         mapping = ggplot2::aes(x = value)) +
+      ggplot2::geom_histogram(binwidth = 0.1, col = "black", fill = "gray") + ggplot2::theme_bw() +
+      ggplot2::xlab("Membership probability") + ggplot2::ylab("Count") + ggplot2::geom_hline(yintercept = n_approx_01, col = "darkred") +
+      ggplot2::geom_vline(xintercept = 0.15, col = "darkblue") + ggplot2::geom_vline(xintercept = 0.85, col = "darkblue")
+    id <- as.character(key %>% dplyr::pull())
+    return(list(p = p, id = id))
+  })
+  metrics_df <- sim_res_w_mem_probs %>% dplyr::summarize(spread = value[target == "membership_probability_spread"],
+                                                         n_approx_0 = value[target == "n_approx_0"],
+                                                         n_approx_1 = value[target == "n_approx_1"],
+                                                         m_perturbation = value[parameter == "m_perturbation" & target == "estimate"],
+                                                         g_perturbation = value[parameter == "g_perturbation" & target == "estimate"],
+                                                         pi = value[parameter == "pi" & target == "estimate"],
+                                                         valid = id[1] %in% valid_ids) %>% dplyr::mutate(id = as.character(id))
+  plots <- lapply(all_runs, function(run) run$p)
+  names(plots) <- sapply(all_runs, function(run) run$id)
+  return(list(plots = plots, metrics_df = metrics_df))
+}
+
+
+#' Plot EM classifications
+#'
+#' Creates a histogram containing the EM estimates for m_perturbation colored by type.
+#'
+#' There are four categories: the cartesian product of (confident vs. unconfident) and (pluasible vs. implausible).
+#' An estimate is "confident" if the posterior membership probabilities are sufficiently spread out (see function
+#' obtain valid IDs); and estimate is "plausible" if the estimates themselves are in biologically realistic ranges.
+#' Valid IDs are those that are both confident and plausible.
+#'
+#' @param em_classifications dataframe outputted by `obtain_valid_ids`
+#' @param sim_spec a simulatr specifier object (to supply the ground truth)
+#' @param grid_row_id grid_row_id giving row to plot
+#'
+#' @return a histogram (in ggplot format)
+#' @export
+plot_em_classifications <- function(em_classifications, sim_spec, grid_row_id, categories = c("confident-plausible", "confident-implausible", "unconfident-plausible", "unconfident-implausible"), parameter = "m_perturbation") {
+  em_classifications_to_plot <- dplyr::filter(em_classifications, grid_row_id == !!grid_row_id, classification %in% categories)
+  gt <- simulatr::get_param_from_simulatr_spec(sim_spec, grid_row_id, param = parameter)
+  cols <- c("confident-plausible" = "firebrick4", "confident-implausible" = "maroon4", "unconfident-plausible" = "dodgerblue4", "unconfident-implausible" = "lightseagreen")
+  p <- ggplot2::ggplot(data = em_classifications_to_plot, mapping = ggplot2::aes(x = !!as.symbol(parameter), col = classification)) + ggplot2::geom_histogram(bins = 25, alpha = 0.7, position = "identity", fill = "gray") + ggplot2::theme_bw() + ggplot2::geom_vline(xintercept = gt) + ggplot2::scale_color_manual(values = cols) + ggplot2::geom_hline(yintercept = 0)
   return(p)
 }
