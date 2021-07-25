@@ -19,6 +19,10 @@ plot_em_classifications(
 \item{sim_spec}{a simulatr specifier object (to supply the ground truth)}
 
 \item{grid_row_id}{grid_row_id giving row to plot}
+
+\item{categories}{classification categories to include in plot}
+
+\item{parameter}{parameter to make histogram for}
 }
 \value{
 a histogram (in ggplot format)

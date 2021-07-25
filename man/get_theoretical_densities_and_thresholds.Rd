@@ -9,7 +9,7 @@ get_theoretical_densities_and_thresholds(sim_spec, xgrid)
 \arguments{
 \item{sim_spec}{a simulatr specifier object}
 
-\item{x_grid}{grid over which to compute the density}
+\item{xgrid}{grid over which to compute the density}
 }
 \value{
 a list containing DFs to plot and optimal thresholds for both mRNA and gRNA

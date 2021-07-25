@@ -3,7 +3,7 @@
 #' Returns DFs to plot the mixture distributions.
 #'
 #' @param sim_spec a simulatr specifier object
-#' @param x_grid grid over which to compute the density
+#' @param xgrid grid over which to compute the density
 #'
 #' @return a list containing DFs to plot and optimal thresholds for both mRNA and gRNA
 #' @export
@@ -73,8 +73,10 @@ get_theoretical_densities_and_thresholds <- function(sim_spec, xgrid) {
 #' @param ylim (optional) ylim
 #' @param plot_discont_points (default false) plot vertical lines showing the points where the threshold changes discontinuously? If TRUE, g_thresh must be present as a column in the summarized_results df.
 #' @param arm_info (optional) a list containing information about the arms; entries sohuld be "arm_names," "varying_param," and "all_params;" if empty, will be guessed from column names.
+#' @param theoretical_values (optional) theoretical values for each arm to plot as horizontal lines
+#' @param ylab (optional) y-axis label
 #'
-#' @return
+#' @return a cowplot containing the plotted arms
 #' @export
 plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, plot_discont_points = FALSE, arm_info = NULL, theoretical_values = NULL, ylab = NULL) {
   if (is.null(arm_info)) {
@@ -135,6 +137,10 @@ plot_all_arms <- function(summarized_results, parameter, metric, ylim = NULL, pl
 #'
 #' @param density_df a density df as outputted by "get_theoretical_densities_and_thresholds."
 #' @param thresh a threshold to plot as a vertical line
+#' @param x_max maximal x-value
+#' @param x_min minimal x-value
+#' @param points plot points? (if FALSE, only lines)
+#' @param xlab x-axis label
 #'
 #' @return a ggplot object
 #' @export
@@ -152,6 +158,7 @@ plot_mixture <- function(density_df, thresh = NULL, x_max = Inf, x_min = -Inf, p
 #' @param sim_res raw result data frame outputted by simulatr
 #' @param grid_row_id an grid row id
 #' @param valid_ids character vector of valid IDs
+#' @param n_approx_01 location on y-axis at which to draw horizontal line
 #'
 #' @return a list of length 2: (i) a list of histogram plots, and (ii) a data frame storing summary metrics for each run
 #' @export
@@ -191,6 +198,8 @@ plot_posterior_membership_probabilities <- function(sim_res, grid_row_id, valid_
 #' @param em_classifications dataframe outputted by `obtain_valid_ids`
 #' @param sim_spec a simulatr specifier object (to supply the ground truth)
 #' @param grid_row_id grid_row_id giving row to plot
+#' @param categories classification categories to include in plot
+#' @param parameter parameter to make histogram for
 #'
 #' @return a histogram (in ggplot format)
 #' @export
@@ -200,4 +209,57 @@ plot_em_classifications <- function(em_classifications, sim_spec, grid_row_id, c
   cols <- c("confident-plausible" = "firebrick4", "confident-implausible" = "maroon4", "unconfident-plausible" = "dodgerblue4", "unconfident-implausible" = "lightseagreen")
   p <- ggplot2::ggplot(data = em_classifications_to_plot, mapping = ggplot2::aes(x = !!as.symbol(parameter), col = classification)) + ggplot2::geom_histogram(bins = 25, alpha = 0.7, position = "identity", fill = "gray") + ggplot2::theme_bw() + ggplot2::geom_vline(xintercept = gt) + ggplot2::scale_color_manual(values = cols) + ggplot2::geom_hline(yintercept = 0)
   return(p)
+}
+
+
+classify_estimates_em <- function(sim_res, spread_thresh = 0.1, approx_0_thresh = 60, approx_1_thresh = 60, g_pert_lower = -0.25, g_pert_upper = Inf, m_pert_lower = -Inf, m_pert_upper = 0.25, pi_lower = 0, pi_upper = 0.3) {
+  out <- dplyr::filter(sim_res, method == "em") %>% dplyr::group_by(id) %>%
+    dplyr::summarize(
+      confident_output = (value[target == "converged"] == 1
+                          & value[target == "membership_probability_spread"] > spread_thresh
+                          & value[target == "n_approx_0"] >= approx_0_thresh
+                          & value[target == "n_approx_1"] >= approx_1_thresh),
+      g_perturbation = value[parameter == "g_perturbation" & target == "estimate"],
+      m_perturbation = value[parameter == "m_perturbation" & target == "estimate"],
+      pi = value[parameter == "pi" & target == "estimate"],
+      plausible_estimates = (g_perturbation >= g_pert_lower &
+                               g_perturbation <= g_pert_upper &
+                               m_perturbation >= m_pert_lower &
+                               m_perturbation <= m_pert_upper &
+                               pi >= pi_lower & pi <= pi_upper),
+      grid_row_id = grid_row_id[1]) %>%
+    dplyr::mutate(classification = paste0(ifelse(confident_output, "confident", "unconfident"), "-",
+                                          ifelse(plausible_estimates, "plausible", "implausible")) %>% factor(),
+                  valid = confident_output & plausible_estimates)
+  return(out)
+}
+
+
+#' Obtain valid IDs
+#'
+#' Obtains valid IDs given the output of a simulatr experiment.
+#'
+#' @param sim_res sim_res object
+#' @param spread_thresh spread threshold
+#' @param approx_0_thresh number cells approximately 0 threshold
+#' @param approx_1_thresh number cells approximately 1 threshold
+#' @param g_pert_lower minimum value for g_pert
+#' @param g_pert_upper maximum value for g_pert
+#' @param m_pert_lower minimum value for m_pert
+#' @param m_pert_upper maximum value for m_pert
+#' @param pi_lower minimum value for pi
+#' @param pi_upper maximum value for pi
+#'
+#' @return a list of length two; (i) a data frame giving the classification of each EM run, and (ii) a character vector of valid IDs for both EM and thresholding
+#' @export
+obtain_valid_ids <- function(sim_res, spread_thresh = 0.1, approx_0_thresh = 50, approx_1_thresh = 50, g_pert_lower = -0.3, g_pert_upper = Inf, m_pert_lower = -Inf, m_pert_upper = 0.3, pi_lower = 0, pi_upper = 0.5) {
+  em_df <- classify_estimates_em(sim_res, spread_thresh, approx_0_thresh, approx_1_thresh, g_pert_lower, g_pert_upper, m_pert_lower, m_pert_upper, pi_lower, pi_upper)
+  valid_thresh_ids <- sim_res %>%
+    dplyr::filter(method == "thresholding") %>%
+    dplyr::group_by(id) %>%
+    dplyr::summarize(valid_idx = (value[target == "fit_attempted"] == 1)) %>%
+    dplyr::filter(valid_idx) %>% dplyr::pull(id) %>% as.character()
+  valid_em_ids <- dplyr::filter(em_df, valid) %>% dplyr::pull(id) %>% as.character()
+  valid_ids <- c(valid_em_ids, valid_thresh_ids)
+  return(list(em_classifications = em_df, valid_ids = valid_ids))
 }

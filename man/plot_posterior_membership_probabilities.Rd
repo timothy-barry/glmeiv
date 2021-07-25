@@ -17,6 +17,8 @@ plot_posterior_membership_probabilities(
 \item{grid_row_id}{an grid row id}
 
 \item{valid_ids}{character vector of valid IDs}
+
+\item{n_approx_01}{location on y-axis at which to draw horizontal line}
 }
 \value{
 a list of length 2: (i) a list of histogram plots, and (ii) a data frame storing summary metrics for each run

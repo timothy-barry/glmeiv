@@ -9,13 +9,22 @@ plot_mixture(
   thresh = NULL,
   x_max = Inf,
   x_min = -Inf,
-  points = TRUE
+  points = TRUE,
+  xlab = NULL
 )
 }
 \arguments{
 \item{density_df}{a density df as outputted by "get_theoretical_densities_and_thresholds."}
 
 \item{thresh}{a threshold to plot as a vertical line}
+
+\item{x_max}{maximal x-value}
+
+\item{x_min}{minimal x-value}
+
+\item{points}{plot points? (if FALSE, only lines)}
+
+\item{xlab}{x-axis label}
 }
 \value{
 a ggplot object

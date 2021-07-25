@@ -37,6 +37,8 @@ run_em_algo_mixture_init(
 
 \item{sd}{sd of noise to add to initial weights}
 
+\item{save_membership_probs_mult}{save the posterior membership probabilities at this multiple}
+
 \item{lambda}{mixing parameter for weighted average of weights; default NULL chooses mixing parameter adaptively.}
 }
 \value{

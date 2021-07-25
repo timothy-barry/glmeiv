@@ -9,7 +9,7 @@
 #' @examples
 #' pois_augmented <- augment_family_object(poisson())
 augment_family_object <- function(f) {
-  fam_str <- gsub(pattern = '\\([0-9]*\\)', replacement = "", x = f$family)
+  fam_str <- gsub(pattern = '\\(.*)', replacement = "", x = f$family)
   new_f <- switch(EXPR = fam_str,
          "poisson" =  augment_poisson_family_object(f),
          "Negative Binomial" = augment_negbinom_family_object(f),

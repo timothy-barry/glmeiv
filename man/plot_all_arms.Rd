@@ -11,7 +11,8 @@ plot_all_arms(
   ylim = NULL,
   plot_discont_points = FALSE,
   arm_info = NULL,
-  theoretical_values = NULL
+  theoretical_values = NULL,
+  ylab = NULL
 )
 }
 \arguments{
@@ -26,9 +27,13 @@ plot_all_arms(
 \item{plot_discont_points}{(default false) plot vertical lines showing the points where the threshold changes discontinuously? If TRUE, g_thresh must be present as a column in the summarized_results df.}
 
 \item{arm_info}{(optional) a list containing information about the arms; entries sohuld be "arm_names," "varying_param," and "all_params;" if empty, will be guessed from column names.}
+
+\item{theoretical_values}{(optional) theoretical values for each arm to plot as horizontal lines}
+
+\item{ylab}{(optional) y-axis label}
 }
 \value{
-
+a cowplot containing the plotted arms
 }
 \description{
 Plot all arms

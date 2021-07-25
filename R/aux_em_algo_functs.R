@@ -25,6 +25,7 @@ run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, ini
 #' @param alpha returns a (1-alpha)% confidence interval
 #' @param n_em_rep number of replicates of em algorithm
 #' @param sd sd of noise to add to initial weights
+#' @param save_membership_probs_mult save the posterior membership probabilities at this multiple
 #' @param lambda mixing parameter for weighted average of weights; default NULL chooses mixing parameter adaptively.
 #'
 #' @return a tibble with columns parameter, target (fields estimate, std_error, p-value, confint lower, and confint higher), and value.
