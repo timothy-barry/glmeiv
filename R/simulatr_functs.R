@@ -145,6 +145,7 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
                                                              covariate_matrix, covariate_coefs, offset)
   mui0 <- conditional_means$mu0
   mui1 <- conditional_means$mu1
+  varying_means <- length(mui0) >= 2
   # sample outputs
   y_matrix <- sapply(seq(1, n), function(i) {
     row <- perturbation_indicators[i,]
@@ -153,8 +154,8 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
     n_mui0 <- length(idx_mui0)
     n_mui1 <- length(idx_mui1)
     out <- numeric(length = B)
-    out[idx_mui0] <- fam$simulate_n_times_given_mu(n = n_mui0, mu = if (is.null(covariate_matrix)) mui0 else mui0[i])
-    out[idx_mui1] <- fam$simulate_n_times_given_mu(n = n_mui1, mu = if (is.null(covariate_matrix)) mui1 else mui1[i])
+    out[idx_mui0] <- fam$simulate_n_times_given_mu(n = n_mui0, mu = if (varying_means) mui0[i] else mui0)
+    out[idx_mui1] <- fam$simulate_n_times_given_mu(n = n_mui1, mu = if (varying_means) mui1[i] else mui1)
     return(out)
   })
   return(t(y_matrix))
