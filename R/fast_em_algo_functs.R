@@ -16,8 +16,8 @@
 #' g_fam <- poisson() %>% augment_family_object()
 #' m_intercept <- 0
 #' g_intercept <- 0
-#' m_perturbation <- log(0.5)
-#' g_perturbation <- log(1.2)
+#' m_perturbation <- log(0.5) # -0.69
+#' g_perturbation <- log(1.2) # 0.18
 #' pi <- 0.01
 #' n <- 100000
 #' m_offset <- log(stats::rpois(n, 100))
@@ -46,7 +46,6 @@ run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_p
 
   # iterate through E and M steps until convergence
   while (!converged) {
-    print(iteration)
     # E step
     curr_Ti1s <- run_e_step_univariate(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi)
     # M step
@@ -54,10 +53,8 @@ run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_p
     # update log likelihood and estimates
     curr_log_lik <- m_step$log_lik
     curr_m_perturbation <- m_step$fit_m_perturbation; curr_g_perturbation <- m_step$fit_g_perturbation; curr_pi <- m_step$fit_pi
-    print(paste0("Curr m_perturbation: ", curr_m_perturbation, ". Curr g_perturbation: ", curr_g_perturbation, ". Curr pi: ", curr_pi))
     # check for convergence
     curr_tol <- abs(curr_log_lik - prev_log_lik)/min(abs(curr_log_lik), abs(prev_log_lik))
-    print(paste0("curr tol: ", curr_tol))
     if (curr_tol < ep_tol) {
       converged <- TRUE
     } else {
@@ -71,14 +68,11 @@ run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_p
 }
 
 
-
 run_e_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi) {
-  update_membership_probs <- update_membership_probs_factory(m_fam, g_fam, curr_pi)
-  m_mus_pert1 <- exp(curr_m_perturbation) * exp_m_offset
-  m_mus_pert0 <- exp_m_offset
-  g_mus_pert1 <- exp(curr_g_perturbation) * exp_g_offset
-  g_mus_pert0 <- exp_g_offset
-  Ti1s <- mapply(update_membership_probs, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1) # vectorize more efficiently!
+  quotient <- (log(1 - curr_pi) - log(curr_pi)) +
+    (exp(curr_m_perturbation) - 1) * exp_m_offset - curr_m_perturbation * m +
+    (exp(curr_g_perturbation) - 1) * exp_g_offset - curr_g_perturbation * g
+  Ti1s <- 1/(exp(quotient) + 1)
   return(Ti1s)
 }
 
