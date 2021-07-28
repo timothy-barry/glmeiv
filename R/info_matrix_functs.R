@@ -208,3 +208,25 @@ compute_info_matrix <- function(pieces) {
                     cbind(submat_5, submat_4, submat_3))
   return(info_mat)
 }
+
+
+#' Run delta method
+#'
+#' Computes the estimate and CI exp(estimate), given its standard error.
+#'
+#' @param estimate an estimate
+#' @param std_error the standard error of the estimate
+#' @param alpha confidence level; defauly 0.95
+#'
+#' @return a data frame with columns estimate, confint_lower, confint_upper
+#' @export
+run_delta_method <- function(estimate, std_error, alpha = 0.95) {
+  mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
+  transformed_est <- exp(estimate)
+  transformed_se <- exp(estimate) * std_error
+  transformed_ci_lower <- transformed_est - mult_factor * transformed_se
+  transformed_ci_upper <- transformed_est + mult_factor * transformed_se
+  return(data.frame(estimate = transformed_est,
+                    confint_lower = transformed_ci_lower,
+                    confint_upper = transformed_ci_upper))
+}

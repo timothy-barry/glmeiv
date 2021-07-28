@@ -8,12 +8,21 @@
 #'
 #' The function requires initial estimates for the parameters m_perturbation, g_perturbation, and pi.
 #'
+#' @param m mRNA counts
+#' @param g gRNA counts
+#' @param exp_m_offset exponentiated m offsets (i.e., fitted values from mRNA GLM)
+#' @param exp_g_offset exponentiated g offsets (i.e., fitted values from gRNA GLM)
+#' @param m_pert_guess initial guess for m perturbation parameter
+#' @param g_pert_guess initial guess for g perturbation parameter
+#' @param pi_guess initial guess for pi
+#' @param ep_tol relative tolerance limit for EM algorithm
+#' @param max_it maximum number of iterations before giving up
+#'
 #' @return a list containing (i) the vector of estimates, (ii) log-likelihood of the fitted model, and (iii) the posterior membership probabilities.
 #' @export
 #'
 #' @examples
-#' m_fam <- poisson() %>% augment_family_object()
-#' g_fam <- poisson() %>% augment_family_object()
+#' m_fam <- g_fam <- augment_family_object(poisson())
 #' m_intercept <- 0
 #' g_intercept <- 0
 #' m_perturbation <- log(0.5) # -0.69
@@ -48,6 +57,10 @@ run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_p
   while (!converged) {
     # E step
     curr_Ti1s <- run_e_step_univariate(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi)
+    if (any(is.na(curr_Ti1s)) || all(curr_Ti1s == 0)) {
+      curr_log_lik <- -Inf
+      break()
+    }
     # M step
     m_step <- run_m_step_univariate(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, n)
     # update log likelihood and estimates
@@ -63,7 +76,9 @@ run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_p
       if (iteration >= max_it) break()
     }
   }
-  out <- list(m_perturbation = curr_m_perturbation, g_perturbation = curr_g_perturbation, pi = curr_pi, log_lik = curr_log_lik, converged = converged, n_iterations = iteration)
+  out <- list(m_perturbation = curr_m_perturbation, g_perturbation = curr_g_perturbation,
+              pi = curr_pi, log_lik = curr_log_lik, converged = converged,
+              n_iterations = iteration)
   return(out)
 }
 

@@ -1,15 +1,15 @@
 #' Run EM algo given initialization weights
 #'
+#' Runs GLM-EIV algo with M-step first. Use `run_em_algo_given_pilot` to GLM-EIV algo with E-step first.
+#'
 #' @param m observed vector m
 #' @param g observed vector g
 #' @param m_fam augmented family of m
 #' @param g_fam augmented family of g
 #' @param covariate_matrix the matrix of covariates; set to NULL if there are no covariates.
 #' @param initial_Ti1s the initial vector of membership probabilities
-#' @param initial_Ti1_matrix a matrix of starting membership probabilities
-#' @param m_offset (optional) offsets for GLM for M
-#' @param g_offset (optional) offsets for GLM for G
-#' @param return_best (run_em_algo_multiple_inits only) return the best fit only, as determined by log-likelihood?
+#' @param m_offset offsets for GLM for M
+#' @param g_offset offsets for GLM for G
 #' @param ep_tol (optional) EM convergence threshold
 #' @param max_it  (optional) maximum number of EM iterations
 #'
@@ -18,52 +18,41 @@
 #' @export
 #' @name run_em_algo_given_init
 #' @examples
-#' \dontrun{
-#' n <- 1000
-#' m_fam <- poisson()
-#' g_fam <- poisson()
-#' m_offset <- g_offset <- NULL
-#' pi <- 0.2
-#' covariate_matrix <- data.frame(p_mito = runif(n = n, 0, 10),
-#'                                lib_size = rpois(n = n, lambda = 1))
-#' m_coef <- c(-1, -2, 1, 0.5)
-#' g_coef <- c(-1, 2, 1, 0.5)
-#' generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef, pi, covariate_matrix)
-#' m <- generated_data$m
-#' g <- generated_data$g
-#' # run using single initialization
-#' initial_Ti1s <- (g >= median(g))
-#' em_res <- run_em_algo_given_init(m, g, m_fam, g_fam,
-#' covariate_matrix, initial_Ti1s, m_offset, g_offset)
-#'
-#' # run using multiple initializations
-#' initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.1)) %% 2)
-#' em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
-#' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
-#'
-#' # harder setting
+#' m_fam <- g_fam <- augment_family_object(poisson())
 #' n <- 5000
-#' m_fam <- poisson()
-#' g_fam <- poisson()
-#' m_offset <- g_offset <- NULL
-#' pi <- 0.2
-#' covariate_matrix <- NULL
-#' m_coef <- c(2, -2)
-#' g_coef <- c(-2, 2)
-#' generated_data <- generate_data_from_model(m_fam, g_fam, m_coef, g_coef,
-#' pi, covariate_matrix, n = n)
-#' m <- generated_data$m
-#' g <- generated_data$g
-#' # run using single initialization
-#' initial_Ti1s <- generated_data$p
-#' initial_Ti1_matrix <- replicate(n = 10, (initial_Ti1s + rbinom(n, 1, 0.3)) %% 2)
-#' em_run <- run_em_algo_given_init(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s,
-#' m_offset, g_offset)
-#' em_runs  <- run_em_algo_multiple_inits(m, g, m_fam, g_fam,
-#' covariate_matrix,initial_Ti1_matrix, m_offset, g_offset)
-#' select_best_em_run(em_runs)
-#' }
-run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.5 * 1e-4, max_it = 75) {
+#' lib_size <- rpois(n = n, lambda = 5000)
+#' m_offset <- g_offset <- log(lib_size)
+#' pi <- 0.1
+#' m_intercept <- log(0.05)
+#' m_perturbation <- log(0.8)
+#' g_intercept <- log(0.025)
+#' g_perturbation <- log(1.2)
+#' covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
+#' m_covariate_coefs <- log(0.9)
+#' g_covariate_coefs <- log(1.1)
+#' dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
+#' m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
+#' g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
+#' covariate_matrix = covariate_matrix, m_covariate_coefs = m_covariate_coefs,
+#' g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
+#' pi_guess <- 0.05
+#' m_intercept_guess <- log(0.07)
+#' m_perturbation_guess <- log(0.7)
+#' g_intercept_guess <- log(0.02)
+#' g_perturbation_guess <- log(1.4)
+#' m_covariate_coefs_guess <- log(0.8)
+#' g_covariate_coefs_guess <- log(1.2)
+#' m <- dat$m
+#' g <- dat$g
+#' # obtain initial membership probabilities (i.e., run E step) using pilot estimates
+#' initial_Ti1s <- run_e_step_pilot(m, g, m_fam, g_fam, pi_guess,
+#' m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess,
+#' g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess,
+#' covariate_matrix, m_offset, g_offset)
+#' # run em algo
+#' fit <- run_em_algo_given_weights(m, g, m_fam, g_fam, covariate_matrix,
+#' initial_Ti1s, m_offset, g_offset)
+run_em_algo_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.5 * 1e-4, max_it = 75) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
@@ -110,10 +99,10 @@ run_em_algo_given_init <- function(m, g, m_fam, g_fam, covariate_matrix, initial
   return(out)
 }
 
+
 ##################
 # helper functions
 ##################
-
 augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
   if (is.null(covariate_matrix)) {
     Xtilde_augmented <- data.frame(perturbation = c(rep(0, n), rep(1, n)))
@@ -137,15 +126,16 @@ augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
 
 run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n) {
   weights <- c(1 - curr_Ti1s, curr_Ti1s)
-  fit_pi <- sum(curr_Ti1s)/n
+  s_curr_Ti1s <- sum(curr_Ti1s)
+  fit_pi <- s_curr_Ti1s/n
   if (fit_pi >= 0.5) { # subtract by 1 to ensure label consistency
-    curr_Ti1s <- 1 - curr_Ti1s
-    fit_pi <- sum(curr_Ti1s)/n
+    s_curr_Ti1s <- n - s_curr_Ti1s
+    fit_pi <- s_curr_Ti1s/n
   }
-  pi_log_lik <- log(1 - fit_pi) * (n - sum(curr_Ti1s)) + log(fit_pi) * sum(curr_Ti1s)
+  pi_log_lik <- log(1 - fit_pi) * (n - s_curr_Ti1s) + log(fit_pi) * s_curr_Ti1s
 
   # fit models for m and g
-  m_form <-  stats::formula("m_augmented ~ .")
+  m_form <- stats::formula("m_augmented ~ .")
   fit_m <- stats::glm(formula = m_form, data = Xtilde_augmented, family = m_fam,
                       weights = weights, offset = m_offset_augmented)
 
@@ -165,7 +155,26 @@ run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augm
 }
 
 
+update_membership_probs_factory <- function(m_fam, g_fam, fit_pi) {
+  m_log_py_given_mu <- m_fam$log_py_given_mu
+  g_log_py_given_mu <- g_fam$log_py_given_mu
+  f <- function(m_i, g_i, m_mus_i0, m_mus_i1, g_mus_i0, g_mus_i1) {
+    quotient <- log(1 - fit_pi) + m_log_py_given_mu(m_i, m_mus_i0) + g_log_py_given_mu(g_i, g_mus_i0) -
+      (log(fit_pi) + m_log_py_given_mu(m_i, m_mus_i1) + g_log_py_given_mu(g_i, g_mus_i1))
+    out <- 1/(exp(quotient) + 1)
+    return(out)
+  }
+  return(f)
+}
+
+
 run_e_step <- function(m_step, m, m_fam, g, g_fam, n) {
+  compute_conditional_means <- function(fit, fam, n) {
+    mus <- fam$linkinv(as.numeric(fit$linear.predictors))
+    mus_pert0 <- mus[seq(1, n)]
+    mus_pert1 <- mus[seq(n + 1, 2 * n)]
+    out <- list(mus_pert0 = mus_pert0, mus_pert1 = mus_pert1)
+  }
   # compute conditional means
   m_mus <- compute_conditional_means(m_step$fit_m, m_fam, n)
   g_mus <- compute_conditional_means(m_step$fit_g, g_fam, n)
@@ -180,22 +189,25 @@ run_e_step <- function(m_step, m, m_fam, g, g_fam, n) {
 }
 
 
-compute_conditional_means <- function(fit, fam, n) {
-  mus <- fam$linkinv(as.numeric(fit$linear.predictors))
-  mus_pert0 <- mus[seq(1, n)]
-  mus_pert1 <- mus[seq(n + 1, 2 * n)]
-  out <- list(mus_pert0 = mus_pert0, mus_pert1 = mus_pert1)
-}
-
-
-update_membership_probs_factory <- function(m_fam, g_fam, fit_pi) {
-  m_log_py_given_mu <- m_fam$log_py_given_mu
-  g_log_py_given_mu <- g_fam$log_py_given_mu
-  f <- function(m_i, g_i, m_mus_i0, m_mus_i1, g_mus_i0, g_mus_i1) {
-    quotient <- log(1 - fit_pi) + m_log_py_given_mu(m_i, m_mus_i0) + g_log_py_given_mu(g_i, g_mus_i0) -
-      (log(fit_pi) + m_log_py_given_mu(m_i, m_mus_i1) + g_log_py_given_mu(g_i, g_mus_i1))
-    out <- 1/(exp(quotient) + 1)
-    return(out)
-  }
-  return(f)
+run_e_step_pilot <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset) {
+  # compute the conditional means
+  m_conditional_means <- compute_theoretical_conditional_means(intercept = m_intercept_guess,
+                                                               perturbation_coef = m_perturbation_guess,
+                                                               fam = m_fam,
+                                                               covariate_matrix = covariate_matrix,
+                                                               covariate_coefs = m_covariate_coefs_guess,
+                                                               offset = m_offset)
+  g_conditional_means <- compute_theoretical_conditional_means(intercept = g_intercept_guess,
+                                                               perturbation_coef = g_perturbation_guess,
+                                                               fam = g_fam,
+                                                               covariate_matrix = covariate_matrix,
+                                                               covariate_coefs = g_covariate_coefs_guess,
+                                                               offset = g_offset)
+  # assign to variables for convenience
+  m_mus_pert0 <- m_conditional_means$mu0; m_mus_pert1 <- m_conditional_means$mu1
+  g_mus_pert0 <- g_conditional_means$mu0; g_mus_pert1 <- g_conditional_means$mu1
+  # compute the membership probabilities
+  update_membership_probs <- update_membership_probs_factory(m_fam, g_fam, pi_guess)
+  Ti1s <- mapply(update_membership_probs, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1)
+  return(Ti1s)
 }
