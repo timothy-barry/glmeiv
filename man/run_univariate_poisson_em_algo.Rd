@@ -51,8 +51,9 @@ the offset vectors.
 The function requires initial estimates for the parameters m_perturbation, g_perturbation, and pi.
 }
 \examples{
+set.seed(4)
 m_fam <- g_fam <- augment_family_object(poisson())
-m_fam <- g_fam <- augment_family_object(MASS::negative.binomial(5))
+ m_fam <- g_fam <- augment_family_object(poisson())
 m_intercept <- 0
 g_intercept <- 0
 m_perturbation <- log(0.5) # -0.69

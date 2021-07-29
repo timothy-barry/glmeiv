@@ -163,24 +163,24 @@ update_membership_probs <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1
 }
 
 
-run_e_step <- function(m_step, m, m_fam, g, g_fam, n) {
-  compute_conditional_means <- function(fit, fam, n) {
-    mus <- fam$linkinv(as.numeric(fit$linear.predictors))
-    mus_pert0 <- mus[seq(1, n)]
-    mus_pert1 <- mus[seq(n + 1, 2 * n)]
-    out <- list(mus_pert0 = mus_pert0, mus_pert1 = mus_pert1)
-  }
-  # compute conditional means
-  m_mus <- compute_conditional_means(m_step$fit_m, m_fam, n)
-  g_mus <- compute_conditional_means(m_step$fit_g, g_fam, n)
-  # define all relevant variables
-  fit_pi <- m_step$fit_pi
-  m_mus_pert0 <- m_mus$mus_pert0; m_mus_pert1 <- m_mus$mus_pert1
-  g_mus_pert0 <- g_mus$mus_pert0; g_mus_pert1 <- g_mus$mus_pert1
-  # compute membership probabilities
-  Ti1s <- update_membership_probs(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi)
-  return(Ti1s)
-}
+# run_e_step <- function(m_step, m, m_fam, g, g_fam, n) {
+#  compute_conditional_means <- function(fit, fam, n) {
+#    mus <- fam$linkinv(as.numeric(fit$linear.predictors))
+#    mus_pert0 <- mus[seq(1, n)]
+#    mus_pert1 <- mus[seq(n + 1, 2 * n)]
+#    out <- list(mus_pert0 = mus_pert0, mus_pert1 = mus_pert1)
+#  }
+#  # compute conditional means
+#  m_mus <- compute_conditional_means(m_step$fit_m, m_fam, n)
+#  g_mus <- compute_conditional_means(m_step$fit_g, g_fam, n)
+#  # define all relevant variables
+#  fit_pi <- m_step$fit_pi
+#  m_mus_pert0 <- m_mus$mus_pert0; m_mus_pert1 <- m_mus$mus_pert1
+#  g_mus_pert0 <- g_mus$mus_pert0; g_mus_pert1 <- g_mus$mus_pert1
+#  # compute membership probabilities
+#  Ti1s <- update_membership_probs(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi)
+#  return(Ti1s)
+# }
 
 
 run_e_step_pilot <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset) {

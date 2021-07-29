@@ -22,8 +22,9 @@
 #' @export
 #'
 #' @examples
+#' set.seed(4)
 #' m_fam <- g_fam <- augment_family_object(poisson())
-#' m_fam <- g_fam <- augment_family_object(MASS::negative.binomial(5))
+#'  m_fam <- g_fam <- augment_family_object(poisson())
 #' m_intercept <- 0
 #' g_intercept <- 0
 #' m_perturbation <- log(0.5) # -0.69
@@ -87,7 +88,7 @@ run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_p
 
 
 run_e_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi, m_fam, g_fam) {
-  if (FALSE) {
+  if (TRUE) {
   m_mus_pert1 <- exp(curr_m_perturbation) * exp_m_offset
   m_mus_pert0 <- exp_m_offset
   g_mus_pert1 <- exp(curr_g_perturbation) * exp_g_offset
@@ -97,7 +98,7 @@ run_e_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_m_pertu
                           g_mus_pert0 = g_mus_pert0, g_mus_pert1 = g_mus_pert1,
                           fit_pi = curr_pi)
   }
-  if (TRUE) {
+  if (FALSE) {
   quotient <- (log(1 - curr_pi) - log(curr_pi)) +
     (exp(curr_m_perturbation) - 1) * exp_m_offset - curr_m_perturbation * m +
     (exp(curr_g_perturbation) - 1) * exp_g_offset - curr_g_perturbation * g
@@ -135,8 +136,8 @@ fit_model_univariate <- function(v, curr_Ti1s, exp_offset, fam) {
     p2 <- sum(curr_Ti1s * exp_offset)
     fit_param <- log(p1) - log(p2)
     # log_lik <- fam$weighted_log_lik(v, exp_offset, exp(fit_param) * exp_offset, curr_Ti1s)
-    log_lik <- fit_param * p1 - exp(fit_param) * p2
-    # log_lik <- 0
+    # log_lik <- fit_param * p1 - exp(fit_param) * p2
+    log_lik <- 0
   } else {
     fit_glm <- stats::glm(formula = v ~ 1, family = fam, weights = curr_Ti1s, offset = log(exp_offset))
     fit_param <- coef(fit_glm)[["(Intercept)"]]
