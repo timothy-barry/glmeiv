@@ -99,14 +99,14 @@ run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offs
 #' @export
 #' @examples
 #' m_fam <- g_fam <- augment_family_object(poisson())
-#' n <- 100000
+#' n <- 200000
 #' lib_size <- rpois(n = n, lambda = 10000)
 #' m_offset <- g_offset <- log(lib_size)
 #' pi <- 0.005
 #' m_intercept <- log(0.05)
-#' m_perturbation <- log(0.8)
+#' m_perturbation <- log(0.75)
 #' g_intercept <- log(0.025)
-#' g_perturbation <- log(1.2)
+#' g_perturbation <- log(1.25)
 #' covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
 #' m_covariate_coefs <- log(0.9)
 #' g_covariate_coefs <- log(1.1)
@@ -118,7 +118,7 @@ run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offs
 #' m <- dat$m
 #' g <- dat$g
 #' fit <- run_em_algo_fast_init(m, g, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
-run_em_algo_fast_init <- function(m, g, m_fam, g_fam, covariate_matrix, m_offset, g_offset, n_em_rep = 15, pi_guess_range = c(1e-5, 0.02), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), alpha = 0.99) {
+run_em_algo_fast_init <- function(m, g, m_fam, g_fam, covariate_matrix, m_offset, g_offset, n_em_rep = 15, pi_guess_range = c(1e-5, 0.02), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), alpha = 0.95) {
   # run the mRNA and gRNA precomputations
   fit_m_precomp <- stats::glm(formula = m ~ ., family = m_fam, data = covariate_matrix, offset = m_offset)
   fit_m_precomp_coefs <- coef(fit_m_precomp)
@@ -130,6 +130,7 @@ run_em_algo_fast_init <- function(m, g, m_fam, g_fam, covariate_matrix, m_offset
   fitted_vals_g_precomp <- as.numeric(stats::fitted.values(fit_g_precomp))
 
   # obtain random starting points for reduced GLM-EIV model
+  set.seed(4)
   pi_guess <- runif(n = n_em_rep, min = pi_guess_range[1], max = pi_guess_range[2])
   m_perturbation_guess <- runif(n = n_em_rep, min = m_perturbation_guess_range[1], max = m_perturbation_guess_range[2])
   g_perturbation_guess <- runif(n = n_em_rep, min = g_perturbation_guess_range[1], max = g_perturbation_guess_range[2])
@@ -163,7 +164,7 @@ run_em_algo_fast_init <- function(m, g, m_fam, g_fam, covariate_matrix, m_offset
 
   # run em algo with initial weights
   fit_em <- run_em_algo_given_weights(m = m, g = g, m_fam = m_fam, g_fam = g_fam, covariate_matrix = covariate_matrix,
-                                      initial_Ti1s = initial_Ti1s, m_offset = m_offset, g_offset = g_offset)
-  out <- run_inference_on_em_fit(fit_em, alpha = alpha)
+                                      initial_Ti1s = initial_Ti1s$Ti1s, m_offset = m_offset, g_offset = g_offset, prev_log_lik = initial_Ti1s$log_lik)
+  out <- list(run_inference_on_em_fit(fit_em, alpha = alpha), fit_em)
   return(out)
 }

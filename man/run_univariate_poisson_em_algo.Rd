@@ -12,6 +12,8 @@ run_univariate_poisson_em_algo(
   m_pert_guess,
   g_pert_guess,
   pi_guess,
+  m_fam,
+  g_fam,
   ep_tol = 0.5 * 1e-04,
   max_it = 50
 )
@@ -50,6 +52,7 @@ The function requires initial estimates for the parameters m_perturbation, g_per
 }
 \examples{
 m_fam <- g_fam <- augment_family_object(poisson())
+m_fam <- g_fam <- augment_family_object(MASS::negative.binomial(5))
 m_intercept <- 0
 g_intercept <- 0
 m_perturbation <- log(0.5) # -0.69
@@ -70,5 +73,5 @@ m <- dat$m
 g <- dat$g
 exp_m_offset <- exp(m_offset)
 exp_g_offset <- exp(g_offset)
-fit_univariate <- run_univariate_poisson_em_algo(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess)
+fit_univariate <- run_univariate_poisson_em_algo(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam)
 }

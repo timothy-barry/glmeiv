@@ -14,7 +14,8 @@ run_em_algo_given_weights(
   initial_Ti1s,
   m_offset,
   g_offset,
-  ep_tol = 0.5 * 1e-04,
+  prev_log_lik = -Inf,
+  ep_tol = 1e-04,
   max_it = 75
 )
 }

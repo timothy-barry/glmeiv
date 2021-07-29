@@ -52,7 +52,7 @@
 #' # run em algo
 #' fit <- run_em_algo_given_weights(m, g, m_fam, g_fam, covariate_matrix,
 #' initial_Ti1s, m_offset, g_offset)
-run_em_algo_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol = 0.5 * 1e-4, max_it = 75) {
+run_em_algo_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-4, max_it = 75) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
@@ -62,10 +62,10 @@ run_em_algo_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, init
 
   # define some basic quantities
   n <- length(m)
-  iteration <- 0L
+  iteration <- 1L
   converged <- FALSE
   curr_Ti1s <- initial_Ti1s
-  prev_log_lik <- -Inf
+  prev_log_lik <- prev_log_lik
   log_liks <- numeric()
 
   # define augmented responses, offsets, and covariate matrix
@@ -125,6 +125,7 @@ augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
 
 
 run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n) {
+  # curr_Ti1s[curr_Ti1s < 1e-4] <- 0 # induce weight sparsity
   weights <- c(1 - curr_Ti1s, curr_Ti1s)
   s_curr_Ti1s <- sum(curr_Ti1s)
   fit_pi <- s_curr_Ti1s/n
@@ -155,16 +156,10 @@ run_m_step <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augm
 }
 
 
-update_membership_probs_factory <- function(m_fam, g_fam, fit_pi) {
-  m_log_py_given_mu <- m_fam$log_py_given_mu
-  g_log_py_given_mu <- g_fam$log_py_given_mu
-  f <- function(m_i, g_i, m_mus_i0, m_mus_i1, g_mus_i0, g_mus_i1) {
-    quotient <- log(1 - fit_pi) + m_log_py_given_mu(m_i, m_mus_i0) + g_log_py_given_mu(g_i, g_mus_i0) -
-      (log(fit_pi) + m_log_py_given_mu(m_i, m_mus_i1) + g_log_py_given_mu(g_i, g_mus_i1))
-    out <- 1/(exp(quotient) + 1)
-    return(out)
-  }
-  return(f)
+update_membership_probs <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi) {
+  quotient <- log(1 - fit_pi) - log(fit_pi) + m_fam$d_log_py(m, m_mus_pert0, m_mus_pert1) + g_fam$d_log_py(g, g_mus_pert0, g_mus_pert1)
+  out <- 1/(exp(quotient) + 1)
+  return(out)
 }
 
 
@@ -183,8 +178,7 @@ run_e_step <- function(m_step, m, m_fam, g, g_fam, n) {
   m_mus_pert0 <- m_mus$mus_pert0; m_mus_pert1 <- m_mus$mus_pert1
   g_mus_pert0 <- g_mus$mus_pert0; g_mus_pert1 <- g_mus$mus_pert1
   # compute membership probabilities
-  update_membership_probs <- update_membership_probs_factory(m_fam, g_fam, fit_pi)
-  Ti1s <- mapply(update_membership_probs, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1)
+  Ti1s <- update_membership_probs(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi)
   return(Ti1s)
 }
 
@@ -206,8 +200,23 @@ run_e_step_pilot <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_
   # assign to variables for convenience
   m_mus_pert0 <- m_conditional_means$mu0; m_mus_pert1 <- m_conditional_means$mu1
   g_mus_pert0 <- g_conditional_means$mu0; g_mus_pert1 <- g_conditional_means$mu1
-  # compute the membership probabilities
-  update_membership_probs <- update_membership_probs_factory(m_fam, g_fam, pi_guess)
-  Ti1s <- mapply(update_membership_probs, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1)
-  return(Ti1s)
+  # compute membership probabilities
+  Ti1s <- update_membership_probs(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, pi_guess)
+  # compute the log-likelihood
+  log_lik <- compute_weighted_log_lik(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, pi_guess, Ti1s)
+  return(list(Ti1s = Ti1s, log_lik = log_lik))
+}
+
+
+compute_weighted_log_lik <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi, Ti1s) {
+  # weighted pi log-likelihood; assumes that the Ti1s are correct, i.e., sum(Ti1s)/n < 0.5.
+  s_curr_Ti1s <- sum(Ti1s)
+  pi_log_lik <- log(1 - fit_pi) * (n - s_curr_Ti1s) + log(fit_pi) * s_curr_Ti1s
+  # mRNA log likelihood
+  mRNA_log_lik <- m_fam$weighted_log_lik(y = m, mu_0 = m_mus_pert0, mu_1 = m_mus_pert1, Ti1s = Ti1s)
+  # gRNA log likelihood
+  gRNA_log_lik <- g_fam$weighted_log_lik(y = g, mu_0 = g_mus_pert0, mu_1 = g_mus_pert1, Ti1s = Ti1s)
+  # log likelihood
+  log_lik <- pi_log_lik + mRNA_log_lik + gRNA_log_lik
+  return(log_lik)
 }

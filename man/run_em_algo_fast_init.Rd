@@ -16,7 +16,7 @@ run_em_algo_fast_init(
   pi_guess_range = c(1e-05, 0.02),
   m_perturbation_guess_range = log(c(0.1, 1.5)),
   g_perturbation_guess_range = log(c(0.5, 10)),
-  alpha = 0.05
+  alpha = 0.95
 )
 }
 \arguments{
@@ -49,14 +49,14 @@ NOTE: Maybe instead take precomputations, i.e. distillation offsets, as argument
 }
 \examples{
 m_fam <- g_fam <- augment_family_object(poisson())
-n <- 100000
+n <- 200000
 lib_size <- rpois(n = n, lambda = 10000)
 m_offset <- g_offset <- log(lib_size)
 pi <- 0.005
 m_intercept <- log(0.05)
-m_perturbation <- log(0.8)
+m_perturbation <- log(0.75)
 g_intercept <- log(0.025)
-g_perturbation <- log(1.2)
+g_perturbation <- log(1.25)
 covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
 m_covariate_coefs <- log(0.9)
 g_covariate_coefs <- log(1.1)

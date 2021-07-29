@@ -23,6 +23,7 @@
 #'
 #' @examples
 #' m_fam <- g_fam <- augment_family_object(poisson())
+#' m_fam <- g_fam <- augment_family_object(MASS::negative.binomial(5))
 #' m_intercept <- 0
 #' g_intercept <- 0
 #' m_perturbation <- log(0.5) # -0.69
@@ -43,28 +44,30 @@
 #' g <- dat$g
 #' exp_m_offset <- exp(m_offset)
 #' exp_g_offset <- exp(g_offset)
-#' fit_univariate <- run_univariate_poisson_em_algo(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess)
-run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, ep_tol = 0.5 * 1e-4, max_it = 50) {
+#' fit_univariate <- run_univariate_poisson_em_algo(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam)
+run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam, ep_tol = 0.5 * 1e-4, max_it = 50) {
+  set.seed(4)
   # set some basic variables
   converged <- FALSE
   prev_log_lik <- -Inf
   n <- length(m)
-  m_fam <- g_fam <- augment_family_object(poisson())
   curr_m_perturbation <- m_pert_guess; curr_g_perturbation <- g_pert_guess; curr_pi <- pi_guess
-  iteration <- 0L
+  iteration <- 1L
+  log_liks <- numeric()
 
   # iterate through E and M steps until convergence
   while (!converged) {
     # E step
-    curr_Ti1s <- run_e_step_univariate(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi)
+    curr_Ti1s <- run_e_step_univariate(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi, m_fam, g_fam)
     if (any(is.na(curr_Ti1s)) || all(curr_Ti1s == 0)) {
       curr_log_lik <- -Inf
       break()
     }
     # M step
-    m_step <- run_m_step_univariate(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, n)
+    m_step <- run_m_step_univariate(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, n, m_fam, g_fam)
     # update log likelihood and estimates
     curr_log_lik <- m_step$log_lik
+    log_liks <- c(log_liks, curr_log_lik)
     curr_m_perturbation <- m_step$fit_m_perturbation; curr_g_perturbation <- m_step$fit_g_perturbation; curr_pi <- m_step$fit_pi
     # check for convergence
     curr_tol <- abs(curr_log_lik - prev_log_lik)/min(abs(curr_log_lik), abs(prev_log_lik))
@@ -78,21 +81,33 @@ run_univariate_poisson_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_p
   }
   out <- list(m_perturbation = curr_m_perturbation, g_perturbation = curr_g_perturbation,
               pi = curr_pi, log_lik = curr_log_lik, converged = converged,
-              n_iterations = iteration)
+              n_iterations = iteration, log_liks = log_liks)
   return(out)
 }
 
 
-run_e_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi) {
+run_e_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_m_perturbation, curr_g_perturbation, curr_pi, m_fam, g_fam) {
+  if (FALSE) {
+  m_mus_pert1 <- exp(curr_m_perturbation) * exp_m_offset
+  m_mus_pert0 <- exp_m_offset
+  g_mus_pert1 <- exp(curr_g_perturbation) * exp_g_offset
+  g_mus_pert0 <- exp_g_offset
+  Ti1s <- update_membership_probs(m_fam = m_fam, g_fam = g_fam, m = m, g = g,
+                          m_mus_pert0 = m_mus_pert0, m_mus_pert1 = m_mus_pert1,
+                          g_mus_pert0 = g_mus_pert0, g_mus_pert1 = g_mus_pert1,
+                          fit_pi = curr_pi)
+  }
+  if (TRUE) {
   quotient <- (log(1 - curr_pi) - log(curr_pi)) +
     (exp(curr_m_perturbation) - 1) * exp_m_offset - curr_m_perturbation * m +
     (exp(curr_g_perturbation) - 1) * exp_g_offset - curr_g_perturbation * g
   Ti1s <- 1/(exp(quotient) + 1)
+  }
   return(Ti1s)
 }
 
 
-run_m_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, n) {
+run_m_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, n, m_fam, g_fam) {
   # estimate pi and compute pi log-likelihood
   s_curr_Ti1s <- sum(curr_Ti1s)
   fit_pi <- s_curr_Ti1s/n
@@ -103,8 +118,8 @@ run_m_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, n
   pi_log_lik <- log(1 - fit_pi) * (n - s_curr_Ti1s) + log(fit_pi) * s_curr_Ti1s
 
   # fit the models for m and g
-  fit_m <- fit_model_univariate(m, curr_Ti1s, exp_m_offset)
-  fit_g <- fit_model_univariate(g, curr_Ti1s, exp_g_offset)
+  fit_m <- fit_model_univariate(m, curr_Ti1s, exp_m_offset, m_fam)
+  fit_g <- fit_model_univariate(g, curr_Ti1s, exp_g_offset, g_fam)
   # compute the overall model log-likelihood
   log_lik <- fit_m$log_lik + fit_g$log_lik + pi_log_lik
   # return fitted parameters, as well as log-likelihood
@@ -114,10 +129,18 @@ run_m_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, n
 }
 
 
-fit_model_univariate <- function(v, curr_Ti1s, exp_offset) {
-  p1 <- sum(curr_Ti1s * v)
-  p2 <- sum(curr_Ti1s * exp_offset)
-  fit_param <- log(p1/p2)
-  log_lik <- fit_param * p1 - exp(fit_param) * p2
+fit_model_univariate <- function(v, curr_Ti1s, exp_offset, fam) {
+  if (fam$fam_str == "poisson") {
+    p1 <- sum(curr_Ti1s * v)
+    p2 <- sum(curr_Ti1s * exp_offset)
+    fit_param <- log(p1) - log(p2)
+    # log_lik <- fam$weighted_log_lik(v, exp_offset, exp(fit_param) * exp_offset, curr_Ti1s)
+    log_lik <- fit_param * p1 - exp(fit_param) * p2
+    # log_lik <- 0
+  } else {
+    fit_glm <- stats::glm(formula = v ~ 1, family = fam, weights = curr_Ti1s, offset = log(exp_offset))
+    fit_param <- coef(fit_glm)[["(Intercept)"]]
+    log_lik <- stats::logLik(fit_glm)
+  }
   return(list(fit_param = fit_param, log_lik = log_lik))
 }
