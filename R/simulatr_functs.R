@@ -160,35 +160,3 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
   })
   return(t(y_matrix))
 }
-
-
-#' Compute theoretical conditional means
-#'
-#' Computes the conditional means of the GLM-EIV model given the ground truth.
-#'
-#' @param intercept intercept term
-#' @param perturbation_coef coefficient corresponding to perturbation
-#' @param fam family object describing response distribution
-#' @param covariate_matrix (optional) matrix of technical covariates
-#' @param covariate_coefs (optional) coefficients corresponding to technical covariates
-#' @param offset (optional) vector of offsets
-#'
-#' @return the scalar (or vector, if covariate_matrix is supplied) of conditional means
-compute_theoretical_conditional_means <- function(intercept, perturbation_coef, fam, covariate_matrix = NULL, covariate_coefs = NULL, offset = NULL) {
-  # augment family object and set offset to 0, if necessary
-  if (is.null(offset)) offset <- 0
-  # compute the (theoretical) conditional linear components
-  if (is.null(covariate_matrix)) {
-    li0 <- intercept + offset
-    li1 <- li0 + perturbation_coef
-  } else {
-    form_str <- paste0("~", paste0(colnames(covariate_matrix), collapse = " + "), " + 0")
-    m <- stats::model.matrix(stats::as.formula(form_str), covariate_matrix)
-    li0 <- intercept + as.numeric((m %*% covariate_coefs)) + offset
-    li1 <- li0 + perturbation_coef
-  }
-  # compute the (theoretical) conditional means
-  mui0 <- fam$linkinv(li0)
-  mui1 <- fam$linkinv(li1)
-  return(list(mu0 = mui0, mu1 = mui1))
-}

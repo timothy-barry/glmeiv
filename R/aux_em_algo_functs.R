@@ -1,6 +1,6 @@
-run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, return_best, ep_tol = 0.5 * 1e-4, max_it = 75) {
+run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, return_best) {
   em_runs <- apply(X = initial_Ti1_matrix, MARGIN = 2, FUN = function(initial_Ti1s) {
-    run_em_algo_given_weights(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, ep_tol, max_it)
+    run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
   })
   names(em_runs) <- NULL
   if (return_best) {
@@ -77,94 +77,71 @@ run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offs
 }
 
 
-#' Run EM algo with fast init
+#' Initialize weights using marginal mixtures
 #'
-#' Runs the EM algorithm using the fast initialization strategy.
-#' The assumption is that n is big and pi is small. It is also assumed
-#' (for now) that the covariate matrix is non-null.
+#' Initializes weights for GLM-EIV by fitting marginal mixtures, then taking weighted average.
 #'
-#' NOTE: Maybe instead take precomputations, i.e. distillation offsets, as arguments.
+#' @param m mRNA counts
+#' @param g gRNA counts
+#' @param m_fam family describing mRNA counts
+#' @param g_fam family describing gRNA counts
+#' @param m_offset optional offsets for m
+#' @param g_offset optional offsets for g
+#' @param lambda optional weight in weighted average; if not supplied, chosen adaptively
 #'
-#'
-#' @param dat a data frame containing the columns "m" and "g"
-#' @param g_fam family object describing mRNA counts
-#' @param m_fam family object describing gRNA counts
-#' @param covariate_matrix a data frame storing the covariates
-#' @param m_offset the vector of offsets for mRNA model
-#' @param g_offset the vector of offsets for gRNA model
-#' @param alpha confidence level of CIs
-#' @param n_em_rep number of times to repeat EM algorithm on "reduced" data
-#'
-#' @return fitted model
-#' @export
-#' @examples
-#' m_fam <- g_fam <- augment_family_object(poisson())
-#' n <- 200000
-#' lib_size <- rpois(n = n, lambda = 10000)
-#' m_offset <- g_offset <- log(lib_size)
-#' pi <- 0.005
-#' m_intercept <- log(0.05)
-#' m_perturbation <- log(0.75)
-#' g_intercept <- log(0.025)
-#' g_perturbation <- log(1.25)
-#' covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
-#' m_covariate_coefs <- log(0.9)
-#' g_covariate_coefs <- log(1.1)
-#' dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
-#' m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
-#' g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
-#' covariate_matrix = covariate_matrix, m_covariate_coefs = m_covariate_coefs,
-#' g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
-#' m <- dat$m
-#' g <- dat$g
-#' fit <- run_em_algo_fast_init(m, g, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
-run_em_algo_fast_init <- function(m, g, m_fam, g_fam, covariate_matrix, m_offset, g_offset, n_em_rep = 15, pi_guess_range = c(1e-5, 0.02), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), alpha = 0.95) {
-  # run the mRNA and gRNA precomputations
-  fit_m_precomp <- stats::glm(formula = m ~ ., family = m_fam, data = covariate_matrix, offset = m_offset)
-  fit_m_precomp_coefs <- coef(fit_m_precomp)
-  fit_g_precomp <- stats::glm(formula = g ~ ., family = g_fam, data = covariate_matrix, offset = g_offset)
-  fit_g_precomp_coefs <- coef(fit_g_precomp)
-
-  # obtain the fitted values
-  fitted_vals_m_precomp <- as.numeric(stats::fitted.values(fit_m_precomp))
-  fitted_vals_g_precomp <- as.numeric(stats::fitted.values(fit_g_precomp))
-
-  # obtain random starting points for reduced GLM-EIV model
-  set.seed(4)
-  pi_guess <- runif(n = n_em_rep, min = pi_guess_range[1], max = pi_guess_range[2])
-  m_perturbation_guess <- runif(n = n_em_rep, min = m_perturbation_guess_range[1], max = m_perturbation_guess_range[2])
-  g_perturbation_guess <- runif(n = n_em_rep, min = g_perturbation_guess_range[1], max = g_perturbation_guess_range[2])
-
-  # fit the reduced GLM-EIV model n_em_rep times
-  reduced_fits <- lapply(seq(1L, n_em_rep), function(i) {
-    run_univariate_poisson_em_algo(m = m, g = g, exp_m_offset = fitted_vals_m_precomp, exp_g_offset = fitted_vals_g_precomp,
-                                   m_pert_guess = m_perturbation_guess[i], g_pert_guess = g_perturbation_guess[i], pi_guess = pi_guess[i])
-  })
-
-  # among fits that converged, select the one with greatest log-likelihood
-  converged <- sapply(reduced_fits, function(fit) fit$converged)
-  reduced_fit <- select_best_em_run(reduced_fits[converged])
-
-  # obtain membership probabilities to initialize EM algo
-  technical_factors <- colnames(covariate_matrix)
-  initial_Ti1s <- run_e_step_pilot(m = m,
-                                   g = g,
-                                   m_fam = m_fam,
-                                   g_fam = g_fam,
-                                   pi_guess = reduced_fit$pi,
-                                   m_intercept_guess = fit_m_precomp_coefs[["(Intercept)"]],
-                                   m_perturbation_guess = reduced_fit$m_perturbation,
-                                   m_covariate_coefs_guess = fit_m_precomp_coefs[[technical_factors]],
-                                   g_intercept_guess = fit_g_precomp_coefs[["(Intercept)"]],
-                                   g_perturbation_guess = reduced_fit$g_perturbation,
-                                   g_covariate_coefs_guess = fit_g_precomp_coefs[[technical_factors]],
-                                   covariate_matrix = covariate_matrix,
-                                   m_offset = m_offset,
-                                   g_offset = g_offset)
-
-  # run em algo with initial weights
-  fit_em <- run_em_algo_given_weights(m = m, g = g, m_fam = m_fam, g_fam = g_fam, covariate_matrix = covariate_matrix,
-                                      initial_Ti1s = initial_Ti1s$Ti1s, m_offset = m_offset, g_offset = g_offset, prev_log_lik = initial_Ti1s$log_lik)
-  out <- list(run_inference_on_em_fit(fit_em, alpha = alpha), fit_em)
+#' @return initial weights for algorithm
+initialize_weights_using_marginal_mixtures <- function(m, g, m_fam, g_fam, m_offset, g_offset, lambda = NULL) {
+  m_weights <- get_marginal_mixture_weights(m, m_fam, m_offset)
+  g_weights <- get_marginal_mixture_weights(g, g_fam, g_offset)
+  if (is.null(lambda)) {
+    d_m <- compute_mean_distance_from_half(m_weights)
+    d_g <- compute_mean_distance_from_half(g_weights)
+    d_sum <- d_m + d_g
+    lambda <- if (d_sum < 1e-10) 1 else d_g/(d_sum)
+  }
+  out <- lambda * g_weights + (1 - lambda) * m_weights
   return(out)
+}
+
+
+#' Get marginal mixture weights
+#'
+#' Fit a marginal mixture model; get the (correctly oriented) weights
+#'
+#' @param v a vector (of mRNA or gRNA counts)
+#' @param fam family object describing the counts
+#' @param offset optional vector of linear offsets
+#'
+#' @return the EM weights
+get_marginal_mixture_weights <- function(v, fam, offset) {
+  flex_fit <- flexmix::flexmix(v ~ 1, k = 2,
+                               model = flexmix::FLXglm(family = fam$flexmix_fam,
+                                                       offset = offset))
+  if (flex_fit@k == 1) {
+    w <- rep(0.5, length(v))
+  } else {
+    w_matrix <- flex_fit@posterior$scaled
+    w <- if (sum(w_matrix[,1]) <= sum(w_matrix[,2])) w_matrix[,1] else w_matrix[,2]
+  }
+  return(w)
+}
+
+
+#' Append noise to weights
+#'
+#' Adds Gaussian noise to an initial weight vector.
+#'
+#' @param w initial weight vector
+#' @param n_rep number of noisy columns to append to w
+#' @param sd standard deviation of noise
+#'
+#' @return initial weight matrix
+append_noise_to_weights <- function(w, n_rep, sd) {
+  initial_Ti1_matrix <- replicate(n = n_rep, {
+    noise <- stats::rnorm(n = length(w), mean = 0, sd = sd)
+    out <- w + noise
+    out[out > 1] <- 1; out[out < 0] <- 0
+    out
+  }) %>% cbind(w, .)
+  return(initial_Ti1_matrix)
 }

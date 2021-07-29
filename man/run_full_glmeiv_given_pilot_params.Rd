@@ -2,7 +2,7 @@
 % Please edit documentation in R/full_em_algo_functs.R
 \name{run_full_glmeiv_given_pilot_params}
 \alias{run_full_glmeiv_given_pilot_params}
-\title{Title}
+\title{Run full GLM-EIV given pilot estiamtes}
 \usage{
 run_full_glmeiv_given_pilot_params(
   m,
@@ -60,7 +60,7 @@ run_full_glmeiv_given_pilot_params(
 
 }
 \description{
-Title
+Run full GLM-EIV given pilot estiamtes
 }
 \examples{
 m_fam <- g_fam <- augment_family_object(poisson())

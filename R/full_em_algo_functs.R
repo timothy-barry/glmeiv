@@ -196,7 +196,7 @@ run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, 
 }
 
 
-#' Title
+#' Run full GLM-EIV given pilot estiamtes
 #'
 #' @param pi_guess pilot guess for pi
 #' @param m_intercept_guess pilot guess for m_intercept
@@ -258,4 +258,10 @@ run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_i
                                             fit_pi = pi_guess, covariate_matrix = covariate_matrix,
                                             m_offset = m_offset, g_offset = g_offset, ep_tol = ep_tol, max_it = max_it)
   return(out)
+}
+
+
+compute_mean_distance_from_half <- function(v) {
+  n <- length(v)
+  sum(abs(v - 0.5))/n
 }
