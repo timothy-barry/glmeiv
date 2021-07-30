@@ -65,6 +65,7 @@ augment_poisson_family_object <- function(f) {
   f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) stats::rpois(1, mu))
   f$simulate_n_times_given_mu <- function(n, mu) stats::rpois(n, mu)
   f$log_py_given_mu <- function(y, mu) stats::dpois(x = y, lambda = mu, log = TRUE)
+  f$py_given_mu <- function(y, mu) stats::dpois(x = y, lambda = mu)
   f$bayes_classifier <- function(mu0, mu1, pi) (mu0 - mu1 + log(pi) - log(1 - pi))/(log(mu0) - log(mu1))
   f$get_log_lik <- function(object) glm_log_lik(object)
   f$flexmix_fam <- "poisson"

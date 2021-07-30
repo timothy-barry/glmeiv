@@ -15,7 +15,8 @@ run_full_glmeiv_given_weights(
   g_offset,
   prev_log_lik = -Inf,
   ep_tol = 1e-04,
-  max_it = 75
+  max_it = 75,
+  min_it = 3
 )
 }
 \arguments{

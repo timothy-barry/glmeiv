@@ -263,3 +263,48 @@ obtain_valid_ids <- function(sim_res, spread_thresh = 0.1, approx_0_thresh = 50,
   valid_ids <- c(valid_em_ids, valid_thresh_ids)
   return(list(em_classifications = em_df, valid_ids = valid_ids))
 }
+
+
+plot_profile_likelihood <- function(param_to_set, val_to_set, fit, m_offsets, g_offsets, covariate_matrix, m_fam, g_fam) {
+  # m coefs
+  m_coefs <- fit$fit_m$coefficients
+  m_perturbation <- as.list(m_coefs)[["perturbation"]]
+  m_intercept <- as.list(m_coefs)[["(Intercept)"]]
+  m_covariate_coefs <- if (length(m_coefs) >= 3) as.list(m_coefs)[[seq(3, length(m_coefs))]] else NULL
+
+  # g coefs
+  g_coefs <- fit$fit_g$coefficients
+  g_perturbation <- as.list(g_coefs)[["perturbation"]]
+  g_intercept <- as.list(g_coefs)[["(Intercept)"]]
+  g_covariate_coefs <- if (length(g_coefs) >= 3) as.list(g_coefs)[[seq(3, length(g_coefs))]] else NULL
+
+  # pi
+  pi <- fit$fit_pi
+
+  # update value of given parameter
+  assign(x = param_to_set, value = val_to_set)
+
+  # pi, m, g
+  m <- as.numeric(fit$fit_m$y)
+  g <- as.numeric(fit$fit_g$y)
+
+  # compute conditional means
+  m_conditional_means <- compute_theoretical_conditional_means(intercept = m_intercept,
+                                                               perturbation_coef = m_perturbation,
+                                                               fam = m_fam,
+                                                               covariate_matrix = covariate_matrix,
+                                                               covariate_coefs = m_covariate_coefs,
+                                                               offset = m_offsets)
+  g_conditional_means <- compute_theoretical_conditional_means(intercept = g_intercept,
+                                                               perturbation_coef = g_perturbation,
+                                                               fam = g_fam,
+                                                               covariate_matrix = covariate_matrix,
+                                                               covariate_coefs = g_covariate_coefs,
+                                                               offset = g_offsets)
+  # run e step to get fitted probabilities and log likelihood
+  e_step <- run_e_step(m_fam = m_fam, g_fam = g_fam, m = m, g = g,
+             m_mus_pert0 = m_conditional_means$mu0, m_mus_pert1 = m_conditional_means$mu1,
+             g_mus_pert0 = g_conditional_means$mu0, g_mus_pert1 = g_conditional_means$mu1,
+             fit_pi = pi)
+  return(e_step$log_lik)
+}

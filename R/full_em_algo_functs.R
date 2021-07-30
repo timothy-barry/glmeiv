@@ -17,9 +17,10 @@
 #' @return a list containing (i) the membership probabilities (Ti1s), (ii) the model log-likelihood, and (iii) the new value of pi (computed ahead of the subsequent M step for convenience).
 run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi) {
   # first, compute log-likelihood
-  p0 <- exp(log(1 - fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert0) + g_fam$log_py_given_mu(g, m_mus_pert0))
-  p1 <- exp(log(fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert1) + g_fam$log_py_given_mu(g, m_mus_pert1))
+  p0 <- exp(log(1 - fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert0) + g_fam$log_py_given_mu(g, g_mus_pert0))
+  p1 <- exp(log(fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert1) + g_fam$log_py_given_mu(g, g_mus_pert1))
   log_lik <- sum(log(p0 + p1))
+
   # second, compute membership probabilities
   quotient <- log(1 - fit_pi) - log(fit_pi) + m_fam$d_log_py(m, m_mus_pert0, m_mus_pert1) + g_fam$d_log_py(g, g_mus_pert0, g_mus_pert1)
   Ti1s <- 1/(exp(quotient) + 1)
@@ -75,7 +76,7 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
 #' g <- dat$g
 #' initial_Ti1s <- runif(n)
 #' fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
-run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-4, max_it = 75) {
+run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-4, max_it = 75, min_it = 3) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
@@ -107,7 +108,7 @@ run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, 
     curr_log_lik <- e_step$log_lik
     log_liks <- c(log_liks, curr_log_lik)
     tol <- compute_tolerance(curr_log_lik, prev_log_lik)
-    if (tol < ep_tol) {
+    if (tol < ep_tol && iteration >= min_it) {
       converged <- TRUE
     } else {
       prev_log_lik <- curr_log_lik
@@ -210,15 +211,16 @@ run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, 
 #'
 #' @inheritParams run_full_glmeiv_given_weights
 #' @examples
+#' set.seed(4)
 #' m_fam <- g_fam <- augment_family_object(poisson())
 #' n <- 5000
 #' lib_size <- rpois(n = n, lambda = 5000)
-#' m_offset <- g_offset <- log(lib_size)
-#' pi <- 0.1
+#' m_offsets <- g_offsets <- log(lib_size)
+#' pi <- 0.3
 #' m_intercept <- log(0.05)
-#' m_perturbation <- log(0.8)
+#' m_perturbation <- log(0.75)
 #' g_intercept <- log(0.025)
-#' g_perturbation <- log(1.2)
+#' g_perturbation <- log(1.4)
 #' covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
 #' m_covariate_coefs <- log(0.9)
 #' g_covariate_coefs <- log(1.1)
@@ -226,14 +228,14 @@ run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, 
 #' m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
 #' g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
 #' covariate_matrix = covariate_matrix, m_covariate_coefs = m_covariate_coefs,
-#' g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
+#' g_covariate_coefs = g_covariate_coefs, m_offset = m_offsets, g_offset = g_offsets)[[1]]
 #' m <- dat$m
 #' g <- dat$g
 #' fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
 #' pi_guess = 0.15, m_intercept_guess = log(0.1), m_perturbation_guess = log(1),
 #' m_covariate_coefs_guess = log(1.4), g_intercept_guess = log(0.05),
 #' g_perturbation_guess = log(1.4), g_covariate_coefs_guess = log(1.2),
-#' covariate_matrix = covariate_matrix, m_offset = m_offset, g_offset = g_offset)
+#' covariate_matrix = covariate_matrix, m_offset = m_offsets, g_offset = g_offsets)
 run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset, ep_tol = 1e-4, max_it = 75) {
   # compute the conditional means
   m_conditional_means <- compute_theoretical_conditional_means(intercept = m_intercept_guess,

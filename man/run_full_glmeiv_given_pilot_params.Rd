@@ -63,15 +63,16 @@ run_full_glmeiv_given_pilot_params(
 Run full GLM-EIV given pilot estiamtes
 }
 \examples{
+set.seed(4)
 m_fam <- g_fam <- augment_family_object(poisson())
 n <- 5000
 lib_size <- rpois(n = n, lambda = 5000)
-m_offset <- g_offset <- log(lib_size)
-pi <- 0.1
+m_offsets <- g_offsets <- log(lib_size)
+pi <- 0.3
 m_intercept <- log(0.05)
-m_perturbation <- log(0.8)
+m_perturbation <- log(0.75)
 g_intercept <- log(0.025)
-g_perturbation <- log(1.2)
+g_perturbation <- log(1.4)
 covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
 m_covariate_coefs <- log(0.9)
 g_covariate_coefs <- log(1.1)
@@ -79,12 +80,12 @@ dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
 m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
 g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
 covariate_matrix = covariate_matrix, m_covariate_coefs = m_covariate_coefs,
-g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
+g_covariate_coefs = g_covariate_coefs, m_offset = m_offsets, g_offset = g_offsets)[[1]]
 m <- dat$m
 g <- dat$g
 fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
 pi_guess = 0.15, m_intercept_guess = log(0.1), m_perturbation_guess = log(1),
 m_covariate_coefs_guess = log(1.4), g_intercept_guess = log(0.05),
 g_perturbation_guess = log(1.4), g_covariate_coefs_guess = log(1.2),
-covariate_matrix = covariate_matrix, m_offset = m_offset, g_offset = g_offset)
+covariate_matrix = covariate_matrix, m_offset = m_offsets, g_offset = g_offsets)
 }
