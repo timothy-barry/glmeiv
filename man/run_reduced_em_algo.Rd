@@ -15,7 +15,8 @@ run_reduced_em_algo(
   m_fam,
   g_fam,
   ep_tol = 0.5 * 1e-04,
-  max_it = 50
+  max_it = 50,
+  min_it = 3
 )
 }
 \arguments{
@@ -55,8 +56,8 @@ set.seed(4)
 m_fam <- g_fam <- augment_family_object(poisson())
 m_intercept <- 0
 g_intercept <- 0
-m_perturbation <- log(0.5) # -0.69
-g_perturbation <- log(1.2) # 0.18
+m_perturbation <- log(0.6)
+g_perturbation <- log(1.4)
 pi <- 0.01
 n <- 100000
 m_offset <- log(stats::rpois(n, 100))

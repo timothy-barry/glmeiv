@@ -44,7 +44,7 @@ run_thresholding_method_simulatr <- function(dat_list, g_intercept, g_perturbati
   bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
   n_datasets <- length(dat_list)
   n <- nrow(dat_list[[1]])
-  lower_try_thresh <- 0.01 * n; upper_try_thresh <- 0.99 * n
+  lower_try_thresh <- (pi * n/20); upper_try_thresh <- n - (pi * n/20)
   res_list <- lapply(X = seq(1, n_datasets), FUN = function(i) {
     dat <- dat_list[[i]]
     g <- dat$g
@@ -63,13 +63,16 @@ run_thresholding_method_simulatr <- function(dat_list, g_intercept, g_perturbati
       # get the effect size estimates and standard errors
       s <- summary(fit)$coefficients
       row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
-      cis <- suppressMessages(stats::confint(fit, level = alpha))
+      mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
+      confint_lower <- s[,"Estimate"] - mult_factor * s[,"Std. Error"]
+      confint_higher <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
+      names(confint_lower) <- names(confint_higher) <- NULL
       out <- data.frame(parameter = paste0("m_", row.names(s)),
                  estimate = s[,"Estimate"],
                  std_error = s[,"Std. Error"],
                  p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],
-                 confint_lower = cis[,1],
-                 confint_higher = cis[,2]) %>%
+                 confint_lower = confint_lower,
+                 confint_higher = confint_higher) %>%
         tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
         dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%
         dplyr::add_row(parameter = "meta", target = "sum_phat", value = s_phat) %>%
@@ -115,9 +118,8 @@ get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covari
   } else {
     mu0s <- conditional_means$mu0
     mu1s <- conditional_means$mu1
-    bdy <- mean(sapply(seq(1, nrow(covariate_matrix)), function(i) {
-      g_fam$bayes_classifier(mu0s[i], mu1s[i], pi)
-    }))
+    bdy <- mean(g_fam$bayes_classifier(mu0s, mu1s, pi))
   }
   return(bdy)
 }
+

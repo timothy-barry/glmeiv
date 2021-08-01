@@ -19,8 +19,7 @@ Imports:
     tidyr,
     simulatr,
     flexmix,
-    tibble,
-    VGAM
+    tibble
 Suggests:
     ggplot2,
     cowplot

@@ -76,7 +76,7 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
 #' g <- dat$g
 #' initial_Ti1s <- runif(n)
 #' fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
-run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-4, max_it = 75, min_it = 3) {
+run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-5, max_it = 75) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
@@ -89,7 +89,7 @@ run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, 
   iteration <- 1L
   converged <- FALSE
   curr_Ti1s <- initial_Ti1s
-  log_liks <- numeric()
+  log_liks <- if (prev_log_lik == -Inf) numeric() else prev_log_lik
   augmented_inputs <- augment_inputs(covariate_matrix, m, g, m_offset, g_offset, n)
 
   # iterate through M and E steps (in that order) until convergence
@@ -108,7 +108,7 @@ run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, 
     curr_log_lik <- e_step$log_lik
     log_liks <- c(log_liks, curr_log_lik)
     tol <- compute_tolerance(curr_log_lik, prev_log_lik)
-    if (tol < ep_tol && iteration >= min_it) {
+    if (tol < ep_tol) {
       converged <- TRUE
     } else {
       prev_log_lik <- curr_log_lik
@@ -174,7 +174,11 @@ extract_glm_fitted_means <- function(fit, fam, n) {
 
 
 compute_tolerance <- function(curr_log_lik, prev_log_lik) {
-  tol <- abs(curr_log_lik - prev_log_lik)/min(abs(curr_log_lik), abs(prev_log_lik))
+  if (curr_log_lik == -Inf) {
+    tol <- Inf
+  } else {
+    tol <- abs(curr_log_lik - prev_log_lik)/min(abs(curr_log_lik), abs(prev_log_lik))
+  }
   return(tol)
 }
 

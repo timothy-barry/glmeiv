@@ -147,7 +147,7 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
   mui1 <- conditional_means$mu1
   varying_means <- length(mui0) >= 2
   # sample outputs
-  y_matrix <- sapply(seq(1, n), function(i) {
+  y_matrix <- sapply(seq(1L, n), function(i) {
     row <- perturbation_indicators[i,]
     idx_mui0 <- which(row == 0)
     idx_mui1 <- which(row == 1)
@@ -159,4 +159,102 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
     return(out)
   })
   return(t(y_matrix))
+}
+
+
+#' Run GLM-EIV at scale simulatr
+#'
+#' @param dat data frame containing columns "m" and "g" for mRNA counts and gRNA counts
+#' @param alpha confidence level
+#' @param n_em_rep number of times to repeat EM algorithm in reduced model
+#' @param save_membership_probs_mult save posterior membership probabilities at this multiple
+#'
+#' @return fitted GLM-EIV model
+#' @export
+#' @inheritParams run_full_glmeiv_given_weights
+#'
+#' @examples
+#' m_fam <- g_fam <- augment_family_object(poisson())
+#' fam_str <- "poisson"
+#' n <- 200000
+#' lib_size <- rpois(n = n, lambda = 5000)
+#' m_offset <- g_offset <- log(lib_size)
+#' pi <- 0.005
+#' m_intercept <- log(0.01)
+#' m_perturbation <- log(0.5)
+#' g_intercept <- log(0.005)
+#' g_perturbation <- log(2.5)
+#' covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
+#' m_covariate_coefs <- log(0.9)
+#' g_covariate_coefs <- log(1.1)
+#' dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
+#' m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
+#' g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
+#' covariate_matrix = covariate_matrix, m_covariate_coefs = m_covariate_coefs,
+#' g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
+#' m <- dat$m; g <- dat$g; p <- dat$p
+#' # ability to recover ground truth given p
+#' fit_m <- glm(formula = m ~ p + batch, family = m_fam, data = covariate_matrix, offset = m_offset)
+#' fit_g <- glm(formula = g ~ p + batch, family = m_fam, data = covariate_matrix, offset = g_offset)
+run_glmeiv_at_scale_simulatr <- function(dat, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10))) {
+  m <- dat$m
+  g <- dat$g
+  # perform precomputations on gRNA and mRNA data
+  m_precomp <- run_glmeiv_precomputation(y = m, covariate_matrix = covariate_matrix, offset = m_offset, fam_str = fam_str)
+  g_precomp <- run_glmeiv_precomputation(y = g, covariate_matrix = covariate_matrix, offset = g_offset, fam_str = fam_str)
+  # run glmeiv given precomputations
+  fit <- run_glmeiv_given_precomputations(m = m, g = g, m_precomp = m_precomp, g_precomp = g_precomp, fam_str = fam_str, covariate_matrix = covariate_matrix, m_offset = m_offset, g_offset = g_offset, n_em_rep = n_em_rep, pi_guess_range = pi_guess_range, m_perturbation_guess_range = m_perturbation_guess_range, g_perturbation_guess_range = g_perturbation_guess_range)
+  s <- run_inference_on_em_fit(fit, alpha)
+  return(list(s, fit))
+}
+
+
+#' Run GLM-EIV (random inititalization)
+#'
+#' Runs GLM-EIV using random initializations for the parameters. Currently, the function assumes that there is at most a single covariate term.
+#'
+#' @param alpha CIs returned at level (1-alpha)\%
+#' @param n_em_rep number of EM replicates
+#' @param save_membership_probs_mult save membership probabilities at this multiple
+#' @param m_intercept_guess_range range over which to sample m_intercept
+#' @param g_intercept_guess_range range over which to sample g_intercept
+#' @param m_covariate_coefs_guess_range range over which to sample m_covariate_coefs
+#' @param g_covariate_coefs_guess_range range over which to sample g_covariate_coefs
+#'
+#' @inheritParams run_full_glmeiv_given_weights
+#' @inheritParams run_glmeiv_given_precomputations
+#'
+#' @return
+#' @export
+run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), m_intercept_guess_range = log(c(1e-4, 1e-1)), g_intercept_guess_range = log(c(1e-4, 1e-1)), m_covariate_coefs_guess_range = log(c(0.5, 1.5)), g_covariate_coefs_guess_range = log(c(0.5, 1.5))) {
+  # get random starting guesses for the parameters; first, five core model parameters
+  m <- dat$m
+  g <- dat$g
+  guesses <- lapply(list(pi = pi_guess_range,
+                         m_perturbation = m_perturbation_guess_range,
+                         g_perturbation = g_perturbation_guess_range,
+                         m_intercept = m_intercept_guess_range,
+                         g_intercept = g_intercept_guess_range,
+                         m_covariate_coefs = m_covariate_coefs_guess_range,
+                         g_covariate_coefs = g_covariate_coefs_guess_range), function(r) {
+                           stats::runif(n = n_em_rep, min = r[1], max = r[2])})
+  # run full GLM-EIV, using these random guesses as starting locations.
+  fits <- lapply(seq(1L, n_em_rep), function(i) {
+    print(paste0("Running replicate ", i))
+    fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
+                                              pi_guess = guesses$pi[i],
+                                              m_intercept_guess = guesses$m_intercept[i],
+                                              m_perturbation_guess = guesses$m_perturbation[i],
+                                              m_covariate_coefs_guess = guesses$m_covariate_coefs[i],
+                                              g_intercept_guess = guesses$g_intercept[i],
+                                              g_perturbation_guess = guesses$g_perturbation[i],
+                                              g_covariate_coefs_guess = guesses$g_covariate_coefs[i],
+                                              covariate_matrix = covariate_matrix,
+                                              m_offset = m_offset, g_offset = g_offset)
+    return(fit)
+  })
+  # select best fit
+  best_fit <- select_best_em_run(fits)
+  s <- run_inference_on_em_fit(best_fit)
+  return(s, best_fit)
 }

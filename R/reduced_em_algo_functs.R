@@ -26,8 +26,8 @@
 #' m_fam <- g_fam <- augment_family_object(poisson())
 #' m_intercept <- 0
 #' g_intercept <- 0
-#' m_perturbation <- log(0.5) # -0.69
-#' g_perturbation <- log(1.2) # 0.18
+#' m_perturbation <- log(0.6)
+#' g_perturbation <- log(1.4)
 #' pi <- 0.01
 #' n <- 100000
 #' m_offset <- log(stats::rpois(n, 100))
@@ -45,7 +45,7 @@
 #' exp_m_offset <- exp(m_offset)
 #' exp_g_offset <- exp(g_offset)
 #' fit_univariate <- run_reduced_em_algo(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam)
-run_reduced_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam, ep_tol = 0.5 * 1e-4, max_it = 50) {
+run_reduced_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam, ep_tol = 0.5 * 1e-4, max_it = 50, min_it = 3) {
   set.seed(4)
   # set some basic variables
   converged <- FALSE
@@ -72,7 +72,7 @@ run_reduced_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_pert_guess, 
 
     # Check for convergence
     tol <- compute_tolerance(curr_log_lik, prev_log_lik)
-    if (tol < ep_tol) {
+    if (tol < ep_tol && iteration >= min_it) {
       converged <- TRUE; break()
     } else {
       prev_log_lik <- curr_log_lik
@@ -82,7 +82,8 @@ run_reduced_em_algo <- function(m, g, exp_m_offset, exp_g_offset, m_pert_guess, 
 
     # M step
     m_step <- run_m_step_univariate(m = m, g = g, exp_m_offset = exp_m_offset,
-                                    exp_g_offset = exp_g_offset, curr_Ti1s = curr_Ti1s)
+                                    exp_g_offset = exp_g_offset, curr_Ti1s = curr_Ti1s,
+                                    m_fam = m_fam, g_fam = g_fam)
     curr_m_perturbation <- m_step$fit_m_perturbation
     curr_g_perturbation <- m_step$fit_g_perturbation
   }
@@ -105,17 +106,17 @@ run_e_step_reduced <- function(m, g, exp_m_offset, exp_g_offset, curr_m_perturba
 }
 
 
-run_m_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_Ti1s) {
+run_m_step_univariate <- function(m, g, exp_m_offset, exp_g_offset, curr_Ti1s, m_fam, g_fam) {
   # fit the models for m and g
-  fit_m <- fit_model_univariate(m, curr_Ti1s, exp_m_offset)
-  fit_g <- fit_model_univariate(g, curr_Ti1s, exp_g_offset)
+  fit_m <- fit_model_univariate(m, curr_Ti1s, exp_m_offset, m_fam)
+  fit_g <- fit_model_univariate(g, curr_Ti1s, exp_g_offset, g_fam)
   # return fitted parameters, as well as log-likelihood
   out <- list(fit_m_perturbation = fit_m, fit_g_perturbation = fit_g)
   return(out)
 }
 
 
-fit_model_univariate <- function(v, curr_Ti1s, exp_offset) {
+fit_model_univariate <- function(v, curr_Ti1s, exp_offset, fam) {
   p1 <- sum(curr_Ti1s * v)
   p2 <- sum(curr_Ti1s * exp_offset)
   fit_param <- log(p1) - log(p2)

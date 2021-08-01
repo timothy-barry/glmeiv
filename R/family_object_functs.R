@@ -48,9 +48,8 @@ augment_negbinom_family_object <- function(f) {
   f$mu.eta.prime <- function(eta) pmax(exp(eta), .Machine$double.eps)
   f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) MASS::rnegbin(n = 1, mu = mu, theta = theta))
   f$simulate_n_times_given_mu <- function(n, mu) MASS::rnegbin(n = n, mu = mu, theta = theta)
-  f$log_py_given_mu <- function(y, mu) y * log(mu) - y * log(theta + mu) - theta * log(mu + theta)
+  f$log_py_given_mu <- function(y, mu) stats::dnbinom(x = y, size = theta, mu = mu, log = TRUE)
   f$bayes_classifier <- function(mu0, mu1, pi) (theta * (log(mu0 + theta) - log(mu1 + theta)) + log(pi) - log(1 - pi))/(log(mu0 * (mu1 + theta)) - log(mu1 * (mu0 + theta)))
-  f$get_log_lik <- function(object) glm_log_lik(object)
   f$flexmix_fam <- "poisson"
   f$density <- function(mu, xgrid) stats::dnbinom(x = xgrid, size = theta, mu = mu)
   f$d_log_py <- function(y, mu_0, mu_1) y * log(mu_0) - y * log(theta + mu_0) - theta * log(mu_0 + theta) - (y * log(mu_1) - y * log(theta + mu_1) - theta * log(mu_1 + theta))
@@ -65,9 +64,7 @@ augment_poisson_family_object <- function(f) {
   f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) stats::rpois(1, mu))
   f$simulate_n_times_given_mu <- function(n, mu) stats::rpois(n, mu)
   f$log_py_given_mu <- function(y, mu) stats::dpois(x = y, lambda = mu, log = TRUE)
-  f$py_given_mu <- function(y, mu) stats::dpois(x = y, lambda = mu)
   f$bayes_classifier <- function(mu0, mu1, pi) (mu0 - mu1 + log(pi) - log(1 - pi))/(log(mu0) - log(mu1))
-  f$get_log_lik <- function(object) glm_log_lik(object)
   f$flexmix_fam <- "poisson"
   f$density <- function(mu, xgrid) stats::dpois(x = xgrid, lambda = mu)
   f$d_log_py <- function(y, mu_0, mu_1) y * (log(mu_0) - log(mu_1)) + mu_1 - mu_0
@@ -81,7 +78,7 @@ augment_gaussian_family_object <- function(f) {
   f$mu.eta.prime <- function(eta) rep(0, length(eta))
   f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) stats::rnorm(1, mu))
   f$simulate_n_times_given_mu <- function(n, mu) stats::rnorm(n, mu)
-  f$log_py_given_mu <- function(y, mu) -(1/2) * (y - mu)^2
+  f$log_py_given_mu <- function(y, mu) stats::dnorm(x = y, mean = mu, log = TRUE)
   f$bayes_classifier <- function(mu0, mu1, pi) ((1/2) * (mu0^2 - mu1^2) + log(pi) - log(1 - pi))/(mu0 - mu1)
   f$get_log_lik <- function(object) lm_log_lik(object)
   f$flexmix_fam <- "gaussian"
