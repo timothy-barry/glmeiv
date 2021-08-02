@@ -18,7 +18,8 @@ generate_full_data(
   m_covariate_coefs,
   g_covariate_coefs,
   m_offset,
-  g_offset
+  g_offset,
+  run_unknown_theta_precomputation = FALSE
 )
 }
 \arguments{
@@ -49,6 +50,8 @@ generate_full_data(
 \item{m_offset}{optional (fixed) offset vector for m}
 
 \item{g_offset}{optional (fixed) offset vector for g}
+
+\item{run_unknown_theta_precomputation}{optional; if TRUE, runs the negative binomial (unknown theta) precomputation on all datasets and stores the results ("m_precomp," "g_precomp") as attributes.}
 }
 \value{
 a list of length B of synthetic datasets with columns (p, m, g)

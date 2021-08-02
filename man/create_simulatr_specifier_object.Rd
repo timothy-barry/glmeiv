@@ -4,12 +4,7 @@
 \alias{create_simulatr_specifier_object}
 \title{Create simulatr specifier object}
 \usage{
-create_simulatr_specifier_object(
-  param_grid,
-  fixed_params,
-  one_rep_times,
-  covariate_sampler = NULL
-)
+create_simulatr_specifier_object(param_grid, fixed_params, one_rep_times)
 }
 \arguments{
 \item{param_grid}{a grid of parameters giving the parameter settings}
@@ -17,8 +12,6 @@ create_simulatr_specifier_object(
 \item{fixed_params}{a list of fixed parameters}
 
 \item{one_rep_times}{a named list giving the single rep time (either scalar or vector) of each method.}
-
-\item{covariate_sampler}{a list of functions to generate a covariate matrix}
 }
 \value{
 a simulatr_specifier object

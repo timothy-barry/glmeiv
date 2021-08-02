@@ -4,7 +4,7 @@
 \alias{run_glmeiv_precomputation}
 \title{Run GLM-EIV precomputation}
 \usage{
-run_glmeiv_precomputation(y, covariate_matrix, offset, fam_str)
+run_glmeiv_precomputation(y, covariate_matrix, offset, fam)
 }
 \arguments{
 \item{y}{a vector of gene or gRNA expressions}

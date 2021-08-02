@@ -9,7 +9,6 @@ run_glmeiv_given_precomputations(
   g,
   m_precomp,
   g_precomp,
-  fam_str,
   covariate_matrix,
   m_offset,
   g_offset,
@@ -28,8 +27,6 @@ run_glmeiv_given_precomputations(
 
 \item{g_precomp}{gRNA precomputation list, as outputted by \code{run_glmeiv_precomputation}}
 
-\item{fam_str}{string describing family; currently "poisson" or "Negative Binomial" supported}
-
 \item{covariate_matrix}{the matrix of covariates; NULL if there are no covariates.}
 
 \item{m_offset}{offsets for m}
@@ -43,6 +40,8 @@ run_glmeiv_given_precomputations(
 \item{m_perturbation_guess_range}{range of values over which to sample m_perturbation}
 
 \item{g_perturbation_guess_range}{range of values over which to sample g_perturbation}
+
+\item{fam_str}{string describing family; currently "poisson" or "Negative Binomial" supported}
 }
 \value{
 a fitted GLM-EIV model

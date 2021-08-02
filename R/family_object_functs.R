@@ -44,6 +44,7 @@ NULL
 
 augment_negbinom_family_object <- function(f) {
   theta <- get(x = ".Theta", envir = environment(f$variance))
+  f$theta <- theta
   f$skewness <- function(mu) (2 * mu + theta)/(sqrt(theta * mu) * sqrt(mu + theta))
   f$mu.eta.prime <- function(eta) pmax(exp(eta), .Machine$double.eps)
   f$simulate_from_mus <- function(mus) sapply(X = mus, FUN = function(mu) MASS::rnegbin(n = 1, mu = mu, theta = theta))
@@ -80,7 +81,6 @@ augment_gaussian_family_object <- function(f) {
   f$simulate_n_times_given_mu <- function(n, mu) stats::rnorm(n, mu)
   f$log_py_given_mu <- function(y, mu) stats::dnorm(x = y, mean = mu, log = TRUE)
   f$bayes_classifier <- function(mu0, mu1, pi) ((1/2) * (mu0^2 - mu1^2) + log(pi) - log(1 - pi))/(mu0 - mu1)
-  f$get_log_lik <- function(object) lm_log_lik(object)
   f$flexmix_fam <- "gaussian"
   f$density <- function(mu, xgrid) stats::dnorm(x = xgrid, mean = mu)
   f$d_log_py <- function(y, mu_0, mu_1) -(1/2) * ((y - mu_0)^2 - (y - mu_1)^2)

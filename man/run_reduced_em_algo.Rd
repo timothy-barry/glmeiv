@@ -34,9 +34,15 @@ run_reduced_em_algo(
 
 \item{pi_guess}{initial guess for pi}
 
+\item{m_fam}{family object describing mRNA distribution}
+
+\item{g_fam}{family object describing gRNA distribution}
+
 \item{ep_tol}{relative tolerance limit for EM algorithm}
 
 \item{max_it}{maximum number of iterations before giving up}
+
+\item{min_it}{mininum number of iterations before declaring convergence}
 }
 \value{
 a list containing (i) the vector of estimates, (ii) log-likelihood of the fitted model, and (iii) the posterior membership probabilities.
@@ -62,9 +68,10 @@ pi <- 0.01
 n <- 100000
 m_offset <- log(stats::rpois(n, 100))
 g_offset <- log(stats::rpois(n, 50))
-dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept, m_perturbation = m_perturbation, g_fam = g_fam,
-                          g_intercept = g_intercept, g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
-                          covariate_matrix = NULL, m_covariate_coefs = NULL, g_covariate_coefs = NULL, m_offset = m_offset, g_offset = g_offset)[[1]]
+dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept, m_perturbation = m_perturbation,
+g_fam = g_fam, g_intercept = g_intercept, g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
+covariate_matrix = NULL, m_covariate_coefs = NULL, g_covariate_coefs = NULL, m_offset = m_offset,
+g_offset = g_offset)[[1]]
 m_fit <- glm(formula = m ~ p + 0, family = m_fam, data = dat, offset = m_offset)
 g_fit <- glm(formula = g ~ p + 0, family = g_fam, data = dat, offset = g_offset)
 m_pert_guess <- log(runif(1, 0.1, 1.5))
@@ -74,5 +81,6 @@ m <- dat$m
 g <- dat$g
 exp_m_offset <- exp(m_offset)
 exp_g_offset <- exp(g_offset)
-fit_univariate <- run_reduced_em_algo(m, g, exp_m_offset, exp_g_offset, m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam)
+fit_univariate <- run_reduced_em_algo(m, g, exp_m_offset, exp_g_offset,
+m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam)
 }

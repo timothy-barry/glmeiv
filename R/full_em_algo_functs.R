@@ -51,7 +51,7 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
 #' @param ep_tol (optional) EM convergence threshold
 #' @param max_it  (optional) maximum number of EM iterations
 #'
-#' @return
+#' @return a fitted GLM-EIV object
 #' @export
 #'
 #' @examples
@@ -75,7 +75,8 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
 #' m <- dat$m
 #' g <- dat$g
 #' initial_Ti1s <- runif(n)
-#' fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
+#' fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix,
+#' initial_Ti1s, m_offset, g_offset)
 run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-5, max_it = 75) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
@@ -183,12 +184,6 @@ compute_tolerance <- function(curr_log_lik, prev_log_lik) {
 }
 
 
-#' Run full GLM-EIV given fitted means
-#'
-#' @return
-#' @export
-#' @inheritParams run_full_glmeiv_given_weights
-#' @inheritParams run_e_step
 run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi, covariate_matrix, m_offset, g_offset, ep_tol = 1e-4, max_it = 75) {
   e_step <- run_e_step(m_fam = m_fam, g_fam = g_fam, m = m, g = g,
                        m_mus_pert0 = m_mus_pert0, m_mus_pert1 = m_mus_pert1,
@@ -210,7 +205,7 @@ run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, 
 #' @param g_intercept_guess pilot guess for g_intercept
 #' @param g_perturbation_guess pilot guess for g_perturbation
 #' @param g_covariate_coefs_guess pilot guess for g_covariate_coefs
-#' @return
+#' @return the fitted GLM-EIV object.
 #' @export
 #'
 #' @inheritParams run_full_glmeiv_given_weights
@@ -269,5 +264,5 @@ run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_i
 
 compute_mean_distance_from_half <- function(v) {
   n <- length(v)
-  sum(abs(v - 0.5))/n
+  2 * sum(abs(v - 0.5))/n
 }

@@ -4,21 +4,14 @@
 #'
 #' @param param_grid a grid of parameters giving the parameter settings
 #' @param fixed_params a list of fixed parameters
-#' @param covariate_sampler a list of functions to generate a covariate matrix
 #' @param one_rep_times a named list giving the single rep time (either scalar or vector) of each method.
 #'
 #' @return a simulatr_specifier object
 #' @export
-create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times, covariate_sampler = NULL) {
-  ############################################
-  # 1. Create covariate_matrix (if necessary);
-  # update the fixed_params list.
-  ############################################
-  if (!is.null(covariate_sampler)) {
-    set.seed(1)
-    covariate_matrix <- as.data.frame(lapply(covariate_sampler, function(f) f(fixed_params[["n"]])))
-    fixed_params[["covariate_matrix"]] <- covariate_matrix
-  }
+create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times) {
+  ############################
+  # 1. Augment family objects.
+  ############################
   fixed_params[["m_fam"]] <- augment_family_object(fixed_params[["m_fam"]])
   fixed_params[["g_fam"]] <- augment_family_object(fixed_params[["g_fam"]])
 
@@ -85,6 +78,7 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
 #' @param g_covariate_coefs coefficients for technical factors in model for g
 #' @param m_offset optional (fixed) offset vector for m
 #' @param g_offset optional (fixed) offset vector for g
+#' @param run_unknown_theta_precomputation optional; if TRUE, runs the negative binomial (unknown theta) precomputation on all datasets and stores the results ("m_precomp," "g_precomp") as attributes.
 #'
 #' @return a list of length B of synthetic datasets with columns (p, m, g)
 #' @export
@@ -108,7 +102,8 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_t
 #' g_covariate_coefs, m_offset, g_offset)
 #' }
 generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_intercept, g_perturbation, pi, n,
-                               B, covariate_matrix, m_covariate_coefs, g_covariate_coefs, m_offset, g_offset) {
+                               B, covariate_matrix, m_covariate_coefs, g_covariate_coefs, m_offset, g_offset,
+                               run_unknown_theta_precomputation = FALSE) {
   # sample a B x n matrix of perturbation indicators
   perturbation_indicators <- matrix(data = stats::rbinom(n = n * B, size = 1, prob = pi), nrow = n, ncol = B)
   # call above for both m and g
@@ -120,6 +115,21 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
     attr(df, "i") <- i
     return(df)
   }, simplify = FALSE)
+  if (run_unknown_theta_precomputation) {
+    for (i in seq(1L, B)) {
+      print(i)
+      fam <- MASS::negative.binomial(NA) %>% augment_family_object()
+      m_precomp <- run_glmeiv_precomputation(y = data_list[[i]]$m,
+                                             covariate_matrix = covariate_matrix,
+                                             offset = m_offset,
+                                             fam = fam)
+      g_precomp <- run_glmeiv_precomputation(y = data_list[[i]]$g,
+                                             covariate_matrix = covariate_matrix,
+                                             offset = g_offset,
+                                             fam = fam)
+      attr(data_list[[i]], "m_precomp") <- m_precomp; attr(data_list[[i]], "g_precomp") <- g_precomp
+    }
+  }
   return(data_list)
 }
 
@@ -162,99 +172,58 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
 }
 
 
-#' Run GLM-EIV at scale simulatr
+#' Process GLM-EIV results simulatr
 #'
-#' @param dat data frame containing columns "m" and "g" for mRNA counts and gRNA counts
-#' @param alpha confidence level
-#' @param n_em_rep number of times to repeat EM algorithm in reduced model
-#' @param save_membership_probs_mult save posterior membership probabilities at this multiple
+#' Processes the results outputted by a GLM-EIV method for use in simulatr.
 #'
-#' @return fitted GLM-EIV model
-#' @export
-#' @inheritParams run_full_glmeiv_given_weights
+#' @param em_fit the fitted GLM-EIV model
+#' @param s data frame of fitted coefficients and inferences
+#' @param dat the data
+#' @param save_membership_probs_mult integer giving multiple to save membership probabilities
+#' @param time execution time (in s)
 #'
-#' @examples
-#' m_fam <- g_fam <- augment_family_object(poisson())
-#' fam_str <- "poisson"
-#' n <- 200000
-#' lib_size <- rpois(n = n, lambda = 5000)
-#' m_offset <- g_offset <- log(lib_size)
-#' pi <- 0.005
-#' m_intercept <- log(0.01)
-#' m_perturbation <- log(0.5)
-#' g_intercept <- log(0.005)
-#' g_perturbation <- log(2.5)
-#' covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
-#' m_covariate_coefs <- log(0.9)
-#' g_covariate_coefs <- log(1.1)
-#' dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
-#' m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
-#' g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
-#' covariate_matrix = covariate_matrix, m_covariate_coefs = m_covariate_coefs,
-#' g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
-#' m <- dat$m; g <- dat$g; p <- dat$p
-#' # ability to recover ground truth given p
-#' fit_m <- glm(formula = m ~ p + batch, family = m_fam, data = covariate_matrix, offset = m_offset)
-#' fit_g <- glm(formula = g ~ p + batch, family = m_fam, data = covariate_matrix, offset = g_offset)
-run_glmeiv_at_scale_simulatr <- function(dat, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10))) {
-  m <- dat$m
-  g <- dat$g
-  # perform precomputations on gRNA and mRNA data
-  m_precomp <- run_glmeiv_precomputation(y = m, covariate_matrix = covariate_matrix, offset = m_offset, fam_str = fam_str)
-  g_precomp <- run_glmeiv_precomputation(y = g, covariate_matrix = covariate_matrix, offset = g_offset, fam_str = fam_str)
-  # run glmeiv given precomputations
-  fit <- run_glmeiv_given_precomputations(m = m, g = g, m_precomp = m_precomp, g_precomp = g_precomp, fam_str = fam_str, covariate_matrix = covariate_matrix, m_offset = m_offset, g_offset = g_offset, n_em_rep = n_em_rep, pi_guess_range = pi_guess_range, m_perturbation_guess_range = m_perturbation_guess_range, g_perturbation_guess_range = g_perturbation_guess_range)
-  s <- run_inference_on_em_fit(fit, alpha)
-  return(list(s, fit))
+#' @return a processed, long data frame
+process_glmeiv_results_simulatr <- function(em_fit, s, dat, save_membership_probs_mult, time) {
+  s <- dplyr::rename(s, "parameter" = "variable")
+  membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
+  n_approx_1 <- sum(em_fit$posterior_perturbation_probs > 0.85)
+  n_approx_0 <- sum(em_fit$posterior_perturbation_probs < 0.15)
+  # output result
+  meta_df <- tibble::tibble(parameter = "meta",
+                          target = c("converged", "membership_probability_spread",
+                                     "n_approx_0", "n_approx_1", "time"),
+                          value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1, time))
+  out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
+  # if i is a multiple of 250, save the posterior membership probabilities
+  i <- attr(dat, "i")
+  if ((i - 1 + save_membership_probs_mult) %% save_membership_probs_mult == 0) {
+    out <- rbind(out, data.frame(parameter = "meta",
+                               target = "membership_prob",
+                               value = em_fit$posterior_perturbation_probs))
+  }
+ return(out)
 }
 
 
-#' Run GLM-EIV (random inititalization)
+#' Create simulatr specifier object (v2)
 #'
-#' Runs GLM-EIV using random initializations for the parameters. Currently, the function assumes that there is at most a single covariate term.
-#'
-#' @param alpha CIs returned at level (1-alpha)\%
-#' @param n_em_rep number of EM replicates
-#' @param save_membership_probs_mult save membership probabilities at this multiple
-#' @param m_intercept_guess_range range over which to sample m_intercept
-#' @param g_intercept_guess_range range over which to sample g_intercept
-#' @param m_covariate_coefs_guess_range range over which to sample m_covariate_coefs
-#' @param g_covariate_coefs_guess_range range over which to sample g_covariate_coefs
-#'
-#' @inheritParams run_full_glmeiv_given_weights
-#' @inheritParams run_glmeiv_given_precomputations
+#' @param param_grid grid of parameters
+#' @param fixed_params list of fixed parameters
+#' @param one_rep_times vector of times for each method, as well as the data generation procedure
+#' @param methods a character vector giving the methods to run
 #'
 #' @return
 #' @export
-run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), m_intercept_guess_range = log(c(1e-4, 1e-1)), g_intercept_guess_range = log(c(1e-4, 1e-1)), m_covariate_coefs_guess_range = log(c(0.5, 1.5)), g_covariate_coefs_guess_range = log(c(0.5, 1.5))) {
-  # get random starting guesses for the parameters; first, five core model parameters
-  m <- dat$m
-  g <- dat$g
-  guesses <- lapply(list(pi = pi_guess_range,
-                         m_perturbation = m_perturbation_guess_range,
-                         g_perturbation = g_perturbation_guess_range,
-                         m_intercept = m_intercept_guess_range,
-                         g_intercept = g_intercept_guess_range,
-                         m_covariate_coefs = m_covariate_coefs_guess_range,
-                         g_covariate_coefs = g_covariate_coefs_guess_range), function(r) {
-                           stats::runif(n = n_em_rep, min = r[1], max = r[2])})
-  # run full GLM-EIV, using these random guesses as starting locations.
-  fits <- lapply(seq(1L, n_em_rep), function(i) {
-    print(paste0("Running replicate ", i))
-    fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
-                                              pi_guess = guesses$pi[i],
-                                              m_intercept_guess = guesses$m_intercept[i],
-                                              m_perturbation_guess = guesses$m_perturbation[i],
-                                              m_covariate_coefs_guess = guesses$m_covariate_coefs[i],
-                                              g_intercept_guess = guesses$g_intercept[i],
-                                              g_perturbation_guess = guesses$g_perturbation[i],
-                                              g_covariate_coefs_guess = guesses$g_covariate_coefs[i],
-                                              covariate_matrix = covariate_matrix,
-                                              m_offset = m_offset, g_offset = g_offset)
-    return(fit)
-  })
-  # select best fit
-  best_fit <- select_best_em_run(fits)
-  s <- run_inference_on_em_fit(best_fit)
-  return(s, best_fit)
+create_simulatr_specifier_object_v2 <- function(param_grid, fixed_params, one_rep_times, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
+  ####################################
+  # 1. Define data_generator function.
+  ####################################
+  data_generator_object <- simulatr::simulatr_function(f = generate_full_data,
+                                                       arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi", "n",
+                                                                     "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset", "run_precomps"),
+                                                       packages = "glmeiv",
+                                                       loop = FALSE,
+                                                       one_rep_time = one_rep_times[["generate_data_function"]])
+
+
 }

@@ -57,7 +57,7 @@ run_full_glmeiv_given_pilot_params(
 \item{max_it}{(optional) maximum number of EM iterations}
 }
 \value{
-
+the fitted GLM-EIV object.
 }
 \description{
 Run full GLM-EIV given pilot estiamtes

@@ -42,7 +42,7 @@ run_full_glmeiv_given_weights(
 \item{max_it}{(optional) maximum number of EM iterations}
 }
 \value{
-
+a fitted GLM-EIV object
 }
 \description{
 Runs the full GLM-EIV model given starting weights. Starting
@@ -68,5 +68,6 @@ g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)
 m <- dat$m
 g <- dat$g
 initial_Ti1s <- runif(n)
-fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
+fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix,
+initial_Ti1s, m_offset, g_offset)
 }
