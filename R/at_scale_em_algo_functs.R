@@ -181,6 +181,7 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
                          })
     # fit models for each starting guess
     fits <- lapply(seq(1L, n_em_rep), function(i) {
+    print(paste0("Rep ", i))
     fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
                                               pi_guess = guesses$pi[i],
                                               m_intercept_guess = guesses$m_intercept[i],
