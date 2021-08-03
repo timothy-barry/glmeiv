@@ -1,65 +1,3 @@
-#' Create simulatr specifier object
-#'
-#' Creates a simulatr_specifier object to run a simulation.
-#'
-#' @param param_grid a grid of parameters giving the parameter settings
-#' @param fixed_params a list of fixed parameters
-#' @param one_rep_times a named list giving the single rep time (either scalar or vector) of each method.
-#'
-#' @return a simulatr_specifier object
-#' @export
-create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times) {
-  ############################
-  # 1. Augment family objects.
-  ############################
-  fixed_params[["m_fam"]] <- augment_family_object(fixed_params[["m_fam"]])
-  fixed_params[["g_fam"]] <- augment_family_object(fixed_params[["g_fam"]])
-
-  #######################################
-  # 2. Define data_generator function and
-  # corresponding data_generator simulatr
-  # function object. Below, code some
-  # checks of correctness in the comment.
-  #######################################
-  data_generator_object <- simulatr::simulatr_function(f = generate_full_data,
-                                             arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi", "n",
-                                                           "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset"),
-                                             packages = "glmeiv",
-                                             loop = FALSE,
-                                             one_rep_time = one_rep_times[["generate_data_function"]])
-
-  ######################################
-  # 3. Define threshold estimator method
-  ######################################
-  thresholding_method_object <- simulatr::simulatr_function(f = run_thresholding_method_simulatr,
-                                                            arg_names = c("g_intercept", "g_perturbation", "g_fam", "m_fam", "pi", "covariate_matrix",
-                                                                          "g_covariate_coefs", "m_offset", "g_offset", "alpha"),
-                                                            packages = "glmeiv",
-                                                            loop = FALSE,
-                                                            one_rep_time = one_rep_times[["thresholding"]])
-
-  ###############################
-  # 4. Define EM algorithm method
-  ###############################
-  em_method_object <- simulatr::simulatr_function(f = run_em_algo_mixture_init,
-                                                  arg_names = c("g_fam", "m_fam", "covariate_matrix", "m_offset", "g_offset", "alpha", "n_em_rep", "sd", "save_membership_probs_mult", "lambda"),
-                                                  packages = "glmeiv",
-                                                  loop = TRUE,
-                                                  one_rep_time = one_rep_times[["em"]])
-
-  #############################
-  # 5. Finally, instantiate the
-  # simulatr_specifier object
-  #############################
-  ret <- simulatr::simulatr_specifier(parameter_grid = param_grid,
-                               fixed_parameters = fixed_params,
-                               generate_data_function = data_generator_object,
-                               run_method_functions = list(thresholding = thresholding_method_object,
-                                                           em = em_method_object))
-  return(ret)
-}
-
-
 #' Generate full data
 #'
 #' Generates B copies of a full GLM-EIV dataset.
@@ -215,15 +153,49 @@ process_glmeiv_results_simulatr <- function(em_fit, s, dat, save_membership_prob
 #' @return
 #' @export
 create_simulatr_specifier_object_v2 <- function(param_grid, fixed_params, one_rep_times, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
+  methods <- sort(methods)
   ####################################
   # 1. Define data_generator function.
   ####################################
   data_generator_object <- simulatr::simulatr_function(f = generate_full_data,
-                                                       arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi", "n",
-                                                                     "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset", "run_precomps"),
+                                                       arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi",
+                                                                     "n", "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset",
+                                                                     "run_unknown_theta_precomputation"),
                                                        packages = "glmeiv",
                                                        loop = FALSE,
                                                        one_rep_time = one_rep_times[["generate_data_function"]])
 
+  method_list <- c(
+    if ("glmeiv_fast" %in% methods) simulatr::simulatr_function(f = run_glmeiv_at_scale_simulatr,
+                                                                arg_names = c("m_fam", "g_fam", "covariate_matrix", "m_offset", "g_offset", "alpha",
+                                                                              "n_em_rep", "save_membership_probs_mult", "pi_guess_range",
+                                                                              "m_perturbation_guess_range", "g_perturbation_guess_range"),
+                                                                packages = "glmeiv",
+                                                                loop = TRUE,
+                                                                one_rep_time = one_rep_times[["glmeiv_fast"]]) else NULL,
+    if ("glmeiv_slow" %in% methods) simulatr::simulatr_function(f = run_glmeiv_random_init_simulatr,
+                                                                arg_names = c("m_fam", "g_fam", "covariate_matrix", "m_offset",
+                                                                              "g_offset", "alpha", "n_em_rep", "save_membership_probs_mult",
+                                                                              "pi_guess_range", "m_perturbation_guess_range", "g_perturbation_guess_range",
+                                                                              "m_intercept_guess_range", "g_intercept_guess_range", "m_covariate_coefs_guess_range",
+                                                                              "g_covariate_coefs_guess_range"),
+                                                                packages = "glmeiv",
+                                                                loop = TRUE,
+                                                                one_rep_time = one_rep_times[["glmeiv_slow"]]) else NULL,
+    if ("thresholding" %in% methods) simulatr::simulatr_function(f = run_thresholding_method_simulatr,
+                                                                 arg_names = c("g_intercept", "g_perturbation",
+                                                                               "g_fam", "m_fam", "pi", "covariate_matrix",
+                                                                               "g_covariate_coefs", "m_offset", "g_offset", "alpha"),
+                                                                 packages = "glmeiv", loop = TRUE, one_rep_time = one_rep_times[["thresholding"]]) else NULL
+    )
+  names(method_list) <- methods
 
+  ################################
+  # 5. Instantiate sim_spec object
+  ################################
+  ret <- simulatr::simulatr_specifier(parameter_grid = param_grid,
+                                      fixed_parameters = fixed_params,
+                                      generate_data_function = data_generator_object,
+                                      run_method_functions = method_list)
+  return(ret)
 }

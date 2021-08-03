@@ -610,3 +610,300 @@ compute_weighted_log_lik <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert
   log_lik <- pi_log_lik + mRNA_log_lik + gRNA_log_lik
   return(log_lik)
 }
+
+# Consider depricating entire script.
+
+run_em_algo_multiple_inits <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1_matrix, m_offset, g_offset, return_best) {
+  em_runs <- apply(X = initial_Ti1_matrix, MARGIN = 2, FUN = function(initial_Ti1s) {
+    run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset)
+  })
+  names(em_runs) <- NULL
+  if (return_best) {
+    out <- select_best_em_run(em_runs)
+  } else {
+    out <- em_runs
+  }
+  return(out)
+}
+
+
+#' Run EM algorithm -- mixture model initialization
+#'
+#' @param dat the count data; should have columns m and g.
+#' @param g_fam family object used to model gRNA counts.
+#' @param m_fam family object used to model mRNA counts.
+#' @param covariate_matrix optional matrix of covariates
+#' @param m_offset optional offsets for mRNA model
+#' @param g_offset optional offsets for gRNA model
+#' @param alpha returns a (1-alpha)% confidence interval
+#' @param n_em_rep number of replicates of em algorithm
+#' @param sd sd of noise to add to initial weights
+#' @param save_membership_probs_mult save the posterior membership probabilities at this multiple
+#' @param lambda mixing parameter for weighted average of weights; default NULL chooses mixing parameter adaptively.
+#'
+#' @return a tibble with columns parameter, target (fields estimate, std_error, p-value, confint lower, and confint higher), and value.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' library(magrittr)
+#' m_fam <- g_fam <- poisson() %>% augment_family_object()
+#' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -1; g_perturbation <- 2
+#' pi <- 0.2; n <- 2000; B <- 5; alpha <- 0.95; n_em_rep <- 3;
+#' sd <- 0.15; lambda <- NULL
+#' m_offset <- g_offset <- NULL
+#' m_covariate_coefs <- g_covariate_coefs <- covariate_matrix <- NULL
+#' dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,
+#' g_intercept, g_perturbation, pi, n, B, covariate_matrix,
+#' m_covariate_coefs, g_covariate_coefs, m_offset, g_offset)
+#' dat <- dat_list[[1]]
+#' run_em_algo_mixture_init(dat, g_fam, m_fam, covariate_matrix,
+#' m_offset, g_offset, alpha, n_em_rep, sd)
+#' }
+run_em_algo_mixture_init <- function(dat, g_fam, m_fam, covariate_matrix, m_offset, g_offset, alpha, n_em_rep, sd = 0.15, save_membership_probs_mult = 250, lambda = NULL) {
+  m <- dat$m
+  g <- dat$g
+  # obtain initial weights
+  w <- initialize_weights_using_marginal_mixtures(m = m, g = g, m_fam = m_fam, g_fam = g_fam, m_offset = m_offset, g_offset = g_offset, lambda = lambda)
+  # obtain initial weight matrix by adding noise
+  initial_Ti1_matrix <- append_noise_to_weights(w, n_em_rep - 1, sd)
+  em_fit <- run_em_algo_multiple_inits(m = m, g = g, m_fam = m_fam, g_fam = g_fam, covariate_matrix = covariate_matrix,
+                                       initial_Ti1_matrix = initial_Ti1_matrix, m_offset = m_offset,
+                                       g_offset = g_offset, return_best = TRUE)
+  # compute fit confidence metrics
+  membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
+  n_approx_1 <- sum(em_fit$posterior_perturbation_probs > 0.85)
+  n_approx_0 <- sum(em_fit$posterior_perturbation_probs < 0.15)
+  # do inference
+  s <- run_inference_on_em_fit(em_fit, alpha) %>% dplyr::rename("parameter" = "variable")
+  # output result
+  meta_df <- tibble::tibble(parameter = "meta",
+                            target = c("converged", "membership_probability_spread", "n_approx_0", "n_approx_1"),
+                            value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1))
+  out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
+  # if i is a multiple of 250, save the posterior membership probabilities
+  i <- attr(dat, "i")
+  if ((i - 1 + save_membership_probs_mult) %% save_membership_probs_mult == 0) {
+    out <- rbind(out, data.frame(parameter = "meta",
+                                 target = "membership_prob",
+                                 value = em_fit$posterior_perturbation_probs))
+  }
+  return(out)
+}
+
+
+#' Initialize weights using marginal mixtures
+#'
+#' Initializes weights for GLM-EIV by fitting marginal mixtures, then taking weighted average.
+#'
+#' @param m mRNA counts
+#' @param g gRNA counts
+#' @param m_fam family describing mRNA counts
+#' @param g_fam family describing gRNA counts
+#' @param m_offset optional offsets for m
+#' @param g_offset optional offsets for g
+#' @param lambda optional weight in weighted average; if not supplied, chosen adaptively
+#'
+#' @return initial weights for algorithm
+initialize_weights_using_marginal_mixtures <- function(m, g, m_fam, g_fam, m_offset, g_offset, lambda = NULL) {
+  m_weights <- get_marginal_mixture_weights(m, m_fam, m_offset)
+  g_weights <- get_marginal_mixture_weights(g, g_fam, g_offset)
+  if (is.null(lambda)) {
+    d_m <- compute_mean_distance_from_half(m_weights)
+    d_g <- compute_mean_distance_from_half(g_weights)
+    d_sum <- d_m + d_g
+    lambda <- if (d_sum < 1e-10) 1 else d_g/(d_sum)
+  }
+  out <- lambda * g_weights + (1 - lambda) * m_weights
+  return(out)
+}
+
+
+#' Get marginal mixture weights
+#'
+#' Fit a marginal mixture model; get the (correctly oriented) weights
+#'
+#' @param v a vector (of mRNA or gRNA counts)
+#' @param fam family object describing the counts
+#' @param offset optional vector of linear offsets
+#'
+#' @return the EM weights
+get_marginal_mixture_weights <- function(v, fam, offset) {
+  flex_fit <- flexmix::flexmix(v ~ 1, k = 2,
+                               model = flexmix::FLXglm(family = fam$flexmix_fam,
+                                                       offset = offset))
+  if (flex_fit@k == 1) {
+    w <- rep(0.5, length(v))
+  } else {
+    w_matrix <- flex_fit@posterior$scaled
+    w <- if (sum(w_matrix[,1]) <= sum(w_matrix[,2])) w_matrix[,1] else w_matrix[,2]
+  }
+  return(w)
+}
+
+
+#' Append noise to weights
+#'
+#' Adds Gaussian noise to an initial weight vector.
+#'
+#' @param w initial weight vector
+#' @param n_rep number of noisy columns to append to w
+#' @param sd standard deviation of noise
+#'
+#' @return initial weight matrix
+append_noise_to_weights <- function(w, n_rep, sd) {
+  initial_Ti1_matrix <- replicate(n = n_rep, {
+    noise <- stats::rnorm(n = length(w), mean = 0, sd = sd)
+    out <- w + noise
+    out[out > 1] <- 1; out[out < 0] <- 0
+    out
+  }) %>% cbind(w, .)
+  return(initial_Ti1_matrix)
+}
+
+
+#' Run thresholding method for simulatr
+#'
+#' Runs the thresholding method; this function is meant to be passed to a simulatr object.
+#'
+#' @param dat_list a list of synthetic data frames; the columns in each data frame should be "m," "p," and "g."
+#' @param g_intercept intercept for gRNA model
+#' @param g_perturbation perturbation coefficient for gRNA model
+#' @param g_fam family object describing gRNA distribution
+#' @param m_fam family object describing mRNA distribution
+#' @param pi fraction of cells with perturbation
+#' @param covariate_matrix the data frame of cell-specific covariates
+#' @param g_covariate_coefs the covariate coefficients for the gRNA model
+#' @param m_offset offsets for mRNA model
+#' @param g_offset offsets for gRNA model
+#' @param alpha confidence intervals are at level (1-alhpa)%
+#'
+#' @return a data frame with columns parameter, target, value, and run_id
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' m_fam <- g_fam <- poisson() %>% augment_family_object()
+#' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
+#' pi <- 0.2; n <- 1000; B <- 5; alpha <- 0.95
+#' m_offset <- g_offset <- NULL
+#' m_covariate_coefs <- g_covariate_coefs <- covariate_matrix <- NULL
+#' dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,
+#' g_intercept, g_perturbation, pi, n, B, covariate_matrix, m_covariate_coefs,
+#' g_covariate_coefs, m_offset, g_offset)
+#' res <- run_thresholding_method_simulatr(dat_list= dat_list,
+#' g_intercept = g_intercept,
+#' g_perturbation = g_perturbation,
+#' g_fam = g_fam,
+#' m_fam = m_fam,
+#' pi = pi,
+#' covariate_matrix = NULL,
+#' g_covariate_coefs = NULL,
+#' m_offset = NULL,
+#' g_offset = NULL,
+#' alpha = alpha)
+#' }
+run_thresholding_method_simulatr <- function(dat_list, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha) {
+  # first, obtain the optimal boundary
+  bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
+  n_datasets <- length(dat_list)
+  n <- nrow(dat_list[[1]])
+  lower_try_thresh <- (pi * n/20); upper_try_thresh <- n - (pi * n/20)
+  res_list <- lapply(X = seq(1, n_datasets), FUN = function(i) {
+    dat <- dat_list[[i]]
+    g <- dat$g
+    phat <- as.integer(g > bdy)
+    s_phat <- sum(phat)
+    if (s_phat <= lower_try_thresh || s_phat >= upper_try_thresh) { # too unbalanced; do not attempt fit
+      out <- data.frame(parameter = "meta",
+                        target = c("fit_attempted", "sum_phat"),
+                        value = c(0, s_phat),
+                        run_id = i)
+    } else {
+      # next, create the data matrix
+      data_mat <- data.frame(m = dat$m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
+      # fit model
+      fit <- stats::glm(formula = m ~ ., data = data_mat, family = m_fam, offset = m_offset)
+      # get the effect size estimates and standard errors
+      s <- summary(fit)$coefficients
+      row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
+      mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
+      confint_lower <- s[,"Estimate"] - mult_factor * s[,"Std. Error"]
+      confint_higher <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
+      names(confint_lower) <- names(confint_higher) <- NULL
+      out <- data.frame(parameter = paste0("m_", row.names(s)),
+                        estimate = s[,"Estimate"],
+                        std_error = s[,"Std. Error"],
+                        p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],
+                        confint_lower = confint_lower,
+                        confint_higher = confint_higher) %>%
+        tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
+        dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%
+        dplyr::add_row(parameter = "meta", target = "sum_phat", value = s_phat) %>%
+        dplyr::mutate(run_id = i)
+    }
+    return(out)
+  })
+  return(do.call(rbind, res_list))
+}
+
+#' Create simulatr specifier object
+#'
+#' Creates a simulatr_specifier object to run a simulation.
+#'
+#' @param param_grid a grid of parameters giving the parameter settings
+#' @param fixed_params a list of fixed parameters
+#' @param one_rep_times a named list giving the single rep time (either scalar or vector) of each method.
+#'
+#' @return a simulatr_specifier object
+#' @export
+create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times) {
+  ############################
+  # 1. Augment family objects.
+  ############################
+  fixed_params[["m_fam"]] <- augment_family_object(fixed_params[["m_fam"]])
+  fixed_params[["g_fam"]] <- augment_family_object(fixed_params[["g_fam"]])
+
+  #######################################
+  # 2. Define data_generator function and
+  # corresponding data_generator simulatr
+  # function object. Below, code some
+  # checks of correctness in the comment.
+  #######################################
+  data_generator_object <- simulatr::simulatr_function(f = generate_full_data,
+                                                       arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi", "n",
+                                                                     "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset"),
+                                                       packages = "glmeiv",
+                                                       loop = FALSE,
+                                                       one_rep_time = one_rep_times[["generate_data_function"]])
+
+  ######################################
+  # 3. Define threshold estimator method
+  ######################################
+  thresholding_method_object <- simulatr::simulatr_function(f = run_thresholding_method_simulatr,
+                                                            arg_names = c("g_intercept", "g_perturbation", "g_fam", "m_fam", "pi", "covariate_matrix",
+                                                                          "g_covariate_coefs", "m_offset", "g_offset", "alpha"),
+                                                            packages = "glmeiv",
+                                                            loop = FALSE,
+                                                            one_rep_time = one_rep_times[["thresholding"]])
+
+  ###############################
+  # 4. Define EM algorithm method
+  ###############################
+  em_method_object <- simulatr::simulatr_function(f = run_em_algo_mixture_init,
+                                                  arg_names = c("g_fam", "m_fam", "covariate_matrix", "m_offset", "g_offset", "alpha", "n_em_rep", "sd", "save_membership_probs_mult", "lambda"),
+                                                  packages = "glmeiv",
+                                                  loop = TRUE,
+                                                  one_rep_time = one_rep_times[["em"]])
+
+  #############################
+  # 5. Finally, instantiate the
+  # simulatr_specifier object
+  #############################
+  ret <- simulatr::simulatr_specifier(parameter_grid = param_grid,
+                                      fixed_parameters = fixed_params,
+                                      generate_data_function = data_generator_object,
+                                      run_method_functions = list(thresholding = thresholding_method_object,
+                                                                  em = em_method_object))
+  return(ret)
+}

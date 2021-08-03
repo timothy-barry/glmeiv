@@ -2,10 +2,10 @@
 % Please edit documentation in R/thresholding_algos.R
 \name{run_thresholding_method_simulatr}
 \alias{run_thresholding_method_simulatr}
-\title{Run thresholding method for simulatr}
+\title{Run thresholding method simulatr V2}
 \usage{
 run_thresholding_method_simulatr(
-  dat_list,
+  dat,
   g_intercept,
   g_perturbation,
   g_fam,
@@ -19,54 +19,19 @@ run_thresholding_method_simulatr(
 )
 }
 \arguments{
-\item{dat_list}{a list of synthetic data frames; the columns in each data frame should be "m," "p," and "g."}
+\item{g_fam}{family describing g}
 
-\item{g_intercept}{intercept for gRNA model}
+\item{m_fam}{family describing m}
 
-\item{g_perturbation}{perturbation coefficient for gRNA model}
+\item{covariate_matrix}{the matrix of covariates; NULL if there are no covariates.}
 
-\item{g_fam}{family object describing gRNA distribution}
+\item{m_offset}{offsets for m}
 
-\item{m_fam}{family object describing mRNA distribution}
-
-\item{pi}{fraction of cells with perturbation}
-
-\item{covariate_matrix}{the data frame of cell-specific covariates}
-
-\item{g_covariate_coefs}{the covariate coefficients for the gRNA model}
-
-\item{m_offset}{offsets for mRNA model}
-
-\item{g_offset}{offsets for gRNA model}
-
-\item{alpha}{confidence intervals are at level (1-alhpa)\%}
+\item{g_offset}{offsets for g}
 }
 \value{
-a data frame with columns parameter, target, value, and run_id
+coefficient table
 }
 \description{
-Runs the thresholding method; this function is meant to be passed to a simulatr object.
-}
-\examples{
-\dontrun{
-m_fam <- g_fam <- poisson() \%>\% augment_family_object()
-m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
-pi <- 0.2; n <- 1000; B <- 5; alpha <- 0.95
-m_offset <- g_offset <- NULL
-m_covariate_coefs <- g_covariate_coefs <- covariate_matrix <- NULL
-dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,
-g_intercept, g_perturbation, pi, n, B, covariate_matrix, m_covariate_coefs,
-g_covariate_coefs, m_offset, g_offset)
-res <- run_thresholding_method_simulatr(dat_list= dat_list,
-g_intercept = g_intercept,
-g_perturbation = g_perturbation,
-g_fam = g_fam,
-m_fam = m_fam,
-pi = pi,
-covariate_matrix = NULL,
-g_covariate_coefs = NULL,
-m_offset = NULL,
-g_offset = NULL,
-alpha = alpha)
-}
+Runs the thresholding method
 }
