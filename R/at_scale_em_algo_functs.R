@@ -167,6 +167,8 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
     m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam
     g_precomp <- attr(dat, "g_precomp"); g_fam <- g_precomp$fam
   }
+  best_fit <- NULL
+  best_log_lik <- -Inf
   # run method, timing the result
   time <- system.time({
   # generate guesses
@@ -180,21 +182,23 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
                            if (is.null(r)) NULL else stats::runif(n = n_em_rep, min = r[1], max = r[2])
                          })
     # fit models for each starting guess
-    fits <- lapply(seq(1L, n_em_rep), function(i) {
-    print(paste0("Rep ", i))
-    fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
-                                              pi_guess = guesses$pi[i],
-                                              m_intercept_guess = guesses$m_intercept[i],
-                                              m_perturbation_guess = guesses$m_perturbation[i],
-                                              m_covariate_coefs_guess = guesses$m_covariate_coefs[i],
-                                              g_intercept_guess = guesses$g_intercept[i],
-                                              g_perturbation_guess = guesses$g_perturbation[i],
-                                              g_covariate_coefs_guess = guesses$g_covariate_coefs[i],
-                                              covariate_matrix = covariate_matrix,
-                                              m_offset = m_offset, g_offset = g_offset)
-    return(fit)
-  })
-  best_fit <- select_best_em_run(fits)
+    for (i in seq(1L, n_em_rep)) {
+      print(paste0("Rep ", i))
+      fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
+                                                pi_guess = guesses$pi[i],
+                                                m_intercept_guess = guesses$m_intercept[i],
+                                                m_perturbation_guess = guesses$m_perturbation[i],
+                                                m_covariate_coefs_guess = guesses$m_covariate_coefs[i],
+                                                g_intercept_guess = guesses$g_intercept[i],
+                                                g_perturbation_guess = guesses$g_perturbation[i],
+                                                g_covariate_coefs_guess = guesses$g_covariate_coefs[i],
+                                                covariate_matrix = covariate_matrix,
+                                                m_offset = m_offset, g_offset = g_offset)
+      if (fit$log_lik > best_log_lik) {
+        best_fit <- fit
+        best_log_lik <- fit$log_lik
+      }
+    }
   s <- run_inference_on_em_fit(best_fit)
   })[["elapsed"]]
   # process the result
