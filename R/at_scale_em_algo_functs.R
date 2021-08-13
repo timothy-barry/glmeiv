@@ -205,3 +205,28 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
   out <- process_glmeiv_results_simulatr(best_fit, s, dat, save_membership_probs_mult, time)
   return(out)
 }
+
+
+#' Wrangle GLM-EIV result
+#'
+#' converts output of GLM-EIV into useful form.
+#'
+#' @param s output of `run_inference_on_em_fit`
+#' @param time execution time
+#' @param em_fit a fitted GLM-EIV object
+#'
+#' @return data frame with results in tidy form
+#' @export
+wrangle_glmeiv_result <- function(s, time, em_fit) {
+  s <- dplyr::rename(s, "parameter" = "variable")
+  membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
+  n_approx_1 <- sum(em_fit$posterior_perturbation_probs > 0.85)
+  n_approx_0 <- sum(em_fit$posterior_perturbation_probs < 0.15)
+  # output result
+  meta_df <- tibble::tibble(parameter = "meta",
+                            target = c("converged", "membership_probability_spread",
+                                       "n_approx_0", "n_approx_1", "time"),
+                            value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1, time))
+  out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
+  return(out)
+}

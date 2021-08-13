@@ -7,9 +7,9 @@
 process_glmeiv_results_simulatr(
   em_fit,
   s,
+  time,
   dat,
-  save_membership_probs_mult,
-  time
+  save_membership_probs_mult
 )
 }
 \arguments{
@@ -17,11 +17,11 @@ process_glmeiv_results_simulatr(
 
 \item{s}{data frame of fitted coefficients and inferences}
 
+\item{time}{execution time (in s)}
+
 \item{dat}{the data}
 
 \item{save_membership_probs_mult}{integer giving multiple to save membership probabilities}
-
-\item{time}{execution time (in s)}
 }
 \value{
 a processed, long data frame
