@@ -32,13 +32,13 @@ run_inference_on_em_fit <- function(em_fit, alpha = 0.95) {
   p_value <- 2 * stats::pnorm(-abs(z_value))
   mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
   confint_lower <- estimate - mult_factor * std_error
-  confint_higher <- estimate + mult_factor * std_error
-  coef_table <- cbind(estimate, std_error, p_value, confint_lower, confint_higher)
+  confint_upper <- estimate + mult_factor * std_error
+  coef_table <- cbind(estimate, std_error, p_value, confint_lower, confint_upper)
   vars <- row.names(coef_table)
-  coef_table <- as.data.frame(coef_table) %>% dplyr::mutate(variable = vars) %>%
-    dplyr::select(variable, everything())
+  coef_table <- as.data.frame(coef_table) %>% dplyr::mutate(parameter = vars) %>%
+    dplyr::select(parameter, everything())
   row.names(coef_table) <- NULL
-  coef_table$variable <- gsub(pattern = "\\(Intercept\\)", replacement = "intercept", x = coef_table$variable)
+  coef_table$parameter <- gsub(pattern = "\\(Intercept\\)", replacement = "intercept", x = coef_table$parameter)
   return(coef_table)
 }
 

@@ -218,15 +218,20 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
 #' @return data frame with results in tidy form
 #' @export
 wrangle_glmeiv_result <- function(s, time, em_fit) {
-  s <- dplyr::rename(s, "parameter" = "variable")
+  s_trans <- dplyr::filter(s, parameter != "pi") %>%
+    dplyr::select(parameter, estimate, p_value, std_error) %>%
+    dplyr::mutate(run_delta_method(estimate, std_error)) %>% dplyr::select(-std_error) %>%
+    dplyr::add_row(dplyr::filter(s, parameter == "pi") %>%
+                     dplyr::select(parameter, estimate, p_value, confint_lower, confint_upper))
+
   membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
   n_approx_1 <- sum(em_fit$posterior_perturbation_probs > 0.85)
   n_approx_0 <- sum(em_fit$posterior_perturbation_probs < 0.15)
-  # output result
+  # transform output result
   meta_df <- tibble::tibble(parameter = "meta",
                             target = c("converged", "membership_probability_spread",
                                        "n_approx_0", "n_approx_1", "time"),
                             value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1, time))
-  out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
+  out <- rbind(tidyr::pivot_longer(s_trans, cols = -parameter, names_to = "target"), meta_df)
   return(out)
 }
