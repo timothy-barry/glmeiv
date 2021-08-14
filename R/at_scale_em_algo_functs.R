@@ -219,8 +219,10 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
 #' @export
 wrangle_glmeiv_result <- function(s, time, em_fit) {
   s_trans <- dplyr::filter(s, parameter != "pi") %>%
-    dplyr::select(parameter, estimate, p_value, std_error) %>%
-    dplyr::mutate(run_delta_method(estimate, std_error)) %>% dplyr::select(-std_error) %>%
+    dplyr::select(parameter, estimate, p_value, confint_lower, confint_upper) %>%
+    dplyr::mutate(estimate = exp(estimate),
+                  confint_lower = exp(confint_lower),
+                  confint_upper = exp(confint_upper)) %>%
     dplyr::add_row(dplyr::filter(s, parameter == "pi") %>%
                      dplyr::select(parameter, estimate, p_value, confint_lower, confint_upper))
 

@@ -122,7 +122,6 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
 #'
 #' @return a processed, long data frame
 process_glmeiv_results_simulatr <- function(em_fit, s, time, dat, save_membership_probs_mult) {
-  s <- dplyr::rename(s, "parameter" = "variable")
   membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
   n_approx_1 <- sum(em_fit$posterior_perturbation_probs > 0.85)
   n_approx_0 <- sum(em_fit$posterior_perturbation_probs < 0.15)
