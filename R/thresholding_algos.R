@@ -95,3 +95,55 @@ run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g
   out <- out %>% dplyr::add_row(.,parameter = "meta", target = "time", value = time)
   return(out)
 }
+
+
+#' Run thresholding method
+#'
+#' Runs the thresholding method on real data.
+#'
+#' Note: consider combining this function with `run_thresholding_method_simulatr`.
+#'
+#' @param phat the binary vector of thresholded gRNA counts
+#' @param m mRNA counts
+#' @param m_fam family object describing mRNA counts
+#' @param m_offset offset for mRNA model
+#' @param covariate_matrix matrix of cell-specific covariates
+#' @param n_examples_per_param number of perturbed cells (per parameter) that must be present to attempt model fit
+#' @param alpha returns alpha-level CIs.
+#'
+#' @return data frame of fitted parameters and CIs.
+#' @export
+run_thresholding_method <- function(phat, m, m_fam, m_offset, covariate_matrix, n_examples_per_param = 5, alpha = 0.95) {
+  data_mat <- data.frame(m = m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
+  # check if enough examples
+  s_phat <- sum(phat)
+  n_params <- ncol(data_mat)
+  if (s_phat <  n_examples_per_param * n_params) { # not enough perturbed cells to fit model
+    out <- data.frame(parameter = "meta", target = c("fit_attempted", "sum_phat"), value = c(0, s_phat))
+  } else { # fit model
+    time <- system.time({
+      fit <- stats::glm(formula = m ~ ., data = data_mat, family = m_fam, offset = m_offset)
+      # log-likelihood
+      log_lik <- stats::logLik(fit)[1]
+      # get the CIs
+      s <- summary(fit)$coefficients
+      row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
+      mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
+      confint_lower <- s[,"Estimate"] - mult_factor * s[,"Std. Error"]
+      confint_upper <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
+      out <- data.frame(parameter = paste0("m_", row.names(s)),
+                        estimate = s[,"Estimate"],
+                        p_value = s[,"Pr(>|t|)"],
+                        confint_lower = confint_lower,
+                        confint_upper = confint_upper) %>%
+        dplyr::mutate(estimate = exp(estimate),
+                      confint_lower = exp(confint_lower),
+                      confint_upper = exp(confint_upper)) %>%
+        tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
+        dplyr::add_row(parameter = "meta", target = "log_lik", value = log_lik) %>%
+        dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%
+        dplyr::add_row(parameter = "meta", target = "sum_phat", value = s_phat)})[["elapsed"]]
+    out <- out %>% dplyr::add_row(parameter = "meta", target = "time", value = time)
+  }
+  return(out)
+}
