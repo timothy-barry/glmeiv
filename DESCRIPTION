@@ -17,8 +17,6 @@ Imports:
     dplyr,
     magrittr,
     tidyr,
-    simulatr,
-    flexmix,
     tibble
 Suggests:
     ggplot2,
