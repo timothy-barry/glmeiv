@@ -19,7 +19,7 @@ GLM-EIV is GLM-oriented variant of the errors-in-variables model. GLM-EIV models
 
 # Installation
 
-To install from Github use the following:
+To install from Github, use the following:
 
 ```{r, eval=FALSE}
 devtools::install_github("timothy-barry/glmeiv")
