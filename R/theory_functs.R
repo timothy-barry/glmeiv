@@ -41,9 +41,10 @@ compute_theoretical_conditional_means <- function(intercept, perturbation_coef, 
     li0 <- intercept + offset
     li1 <- li0 + perturbation_coef
   } else {
-    form_str <- paste0("~", paste0(colnames(covariate_matrix), collapse = " + "), " + 0")
+    # col_class <- sapply(colnames(covariate_matrix), function(colname) class(covariate_matrix[[colname]]))
+    form_str <- paste0("~", paste0(colnames(covariate_matrix), collapse = " + "))
     m <- stats::model.matrix(stats::as.formula(form_str), covariate_matrix)
-    li0 <- intercept + as.numeric((m %*% covariate_coefs)) + offset
+    li0 <- intercept + as.numeric((m %*% c(intercept, covariate_coefs))) + offset
     li1 <- li0 + perturbation_coef
   }
   # compute the (theoretical) conditional means
