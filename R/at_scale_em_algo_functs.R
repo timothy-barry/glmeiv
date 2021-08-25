@@ -131,7 +131,7 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
     s <- run_inference_on_em_fit(fit, alpha)
     })[["elapsed"]]
   # do post-processing (by a call to a function), then return result.
-  out <- process_glmeiv_results_simulatr(fit, s, dat, save_membership_probs_mult, time)
+  out <- wrangle_glmeiv_result(s, time, fit)
   return(out)
 }
 

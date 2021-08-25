@@ -133,7 +133,7 @@ process_glmeiv_results_simulatr <- function(em_fit, s, time, dat, save_membershi
   out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
   # if i is a multiple of 250, save the posterior membership probabilities
   i <- attr(dat, "i")
-  if ((i - 1 + save_membership_probs_mult) %% save_membership_probs_mult == 0) {
+  if (!is.null(i) && (i - 1 + save_membership_probs_mult) %% save_membership_probs_mult == 0) {
     out <- rbind(out, data.frame(parameter = "meta",
                                target = "membership_prob",
                                value = em_fit$posterior_perturbation_probs))
