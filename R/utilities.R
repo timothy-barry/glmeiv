@@ -47,19 +47,3 @@ is_monotonic <- function(em_runs) {
   })
   return(monotonically_increasing)
 }
-
-
-#' Select best EM run
-#'
-#' Returns the best run, defined as the run with positive perturbation coefficient for G and
-#' greatest log-likelihood.
-#'
-#' @param em_runs a list of outputs of run_em_algo_given_init
-#'
-#' @return the best run of the list
-#' @export
-select_best_em_run <- function(em_runs) {
-  # select the run with greatest likelihood
-  log_liks <- sapply(em_runs, function(run) run$log_lik)
-  return(em_runs[[which.max(log_liks)]])
-}

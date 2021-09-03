@@ -237,3 +237,24 @@ wrangle_glmeiv_result <- function(s, time, em_fit) {
   out <- rbind(tidyr::pivot_longer(s_trans, cols = -parameter, names_to = "target"), meta_df)
   return(out)
 }
+
+
+#' Select best EM run
+#'
+#' Returns the best run, defined as the run with m_perturbation in a reasonable range and
+#' greatest log-likelihood.
+#'
+#' @param em_runs a list of outputs of run_em_algo_given_init
+#' @param m_perturbation_range range of acceptable values for m_perturbation
+#'
+#' @return the best run of the list
+#' @export
+select_best_em_run <- function(em_runs, m_perturbation_range = c(log(0.1), log(1.25))) {
+  # restrict runs to those with m_perturbation in acceptable range
+  m_perturbations <- sapply(em_runs, function(run) run$m_perturbation)
+  valid_m_pert <- (m_perturbations >= m_perturbation_range[1]) & (m_perturbations <= m_perturbation_range[2])
+  em_runs <- em_runs[valid_m_pert]
+  # return the em run with greatest log-likelihood
+  log_liks <- sapply(em_runs, function(run) run$log_lik)
+  return(em_runs[[which.max(log_liks)]])
+}
