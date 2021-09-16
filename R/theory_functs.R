@@ -10,14 +10,18 @@
 #'
 #' @return the bias of the thresholding estimator
 #' @export
-get_tresholding_estimator_bias <- function(m_perturbation, g_perturbation, pi) {
+get_tresholding_estimator_bias <- function(m_perturbation, g_perturbation, pi, return_bias = TRUE) {
   c <- (1/g_perturbation) * (log(1-pi) - log(pi)) + (1/2) * g_perturbation
   z <- 1 - stats::pnorm(c)
   w <- 1 - stats::pnorm(c - g_perturbation)
   mean_phat <- z * (1 - pi) + w * pi
   mult_factor <- exp(log(pi) + log(w - mean_phat) - log(mean_phat) - log(1 - mean_phat))
-  bias <- m_perturbation * (1 - mult_factor) * -1
-  return(bias)
+  if (return_bias) {
+    out <- m_perturbation * (1 - mult_factor) * -1
+  } else {
+    out <- m_perturbation * mult_factor
+  }
+  return(out)
 }
 
 
@@ -44,7 +48,7 @@ compute_theoretical_conditional_means <- function(intercept, perturbation_coef, 
     # col_class <- sapply(colnames(covariate_matrix), function(colname) class(covariate_matrix[[colname]]))
     form_str <- paste0("~", paste0(colnames(covariate_matrix), collapse = " + "))
     m <- stats::model.matrix(stats::as.formula(form_str), covariate_matrix)
-    li0 <- intercept + as.numeric((m %*% c(intercept, covariate_coefs))) + offset
+    li0 <- as.numeric((m %*% c(intercept, covariate_coefs))) + offset
     li1 <- li0 + perturbation_coef
   }
   # compute the (theoretical) conditional means

@@ -249,11 +249,12 @@ wrangle_glmeiv_result <- function(s, time, em_fit) {
 #'
 #' @return the best run of the list
 #' @export
-select_best_em_run <- function(em_runs, m_perturbation_range = c(log(0.1), log(1.25))) {
+select_best_em_run <- function(em_runs, m_perturbation_range = c(log(0.1), log(2))) {
   # restrict runs to those with m_perturbation in acceptable range
   m_perturbations <- sapply(em_runs, function(run) run$m_perturbation)
   valid_m_pert <- (m_perturbations >= m_perturbation_range[1]) & (m_perturbations <= m_perturbation_range[2])
-  em_runs <- em_runs[valid_m_pert]
+  # if there exists at least one run with valid m_pert, subset
+  if (any(valid_m_pert)) em_runs <- em_runs[valid_m_pert]
   # return the em run with greatest log-likelihood
   log_liks <- sapply(em_runs, function(run) run$log_lik)
   return(em_runs[[which.max(log_liks)]])

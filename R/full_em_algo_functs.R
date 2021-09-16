@@ -19,7 +19,13 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
   # first, compute log-likelihood
   p0 <- exp(log(1 - fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert0) + g_fam$log_py_given_mu(g, g_mus_pert0))
   p1 <- exp(log(fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert1) + g_fam$log_py_given_mu(g, g_mus_pert1))
-  log_lik <- sum(log(p0 + p1))
+
+  s <- p0 + p1
+  if (0 %in% s) {
+    s_wo_0 <- s[s != 0]
+    s[s == 0] <- min(s_wo_0)
+  }
+  log_lik <- sum(log(s))
 
   # second, compute membership probabilities
   quotient <- log(1 - fit_pi) - log(fit_pi) + m_fam$d_log_py(m, m_mus_pert0, m_mus_pert1) + g_fam$d_log_py(g, g_mus_pert0, g_mus_pert1)

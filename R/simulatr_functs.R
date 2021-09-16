@@ -86,6 +86,7 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
 #' @param n the number of examples
 #' @param B the number of datasets to resample
 #'
+#' @export
 #' @return an n times B matrix of synthetic response data
 generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_indicators, fam, covariate_matrix, covariate_coefs, offset, n, B) {
   # compute theoretical conditional means
