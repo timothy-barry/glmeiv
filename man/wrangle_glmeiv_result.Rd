@@ -4,7 +4,7 @@
 \alias{wrangle_glmeiv_result}
 \title{Wrangle GLM-EIV result}
 \usage{
-wrangle_glmeiv_result(s, time, em_fit)
+wrangle_glmeiv_result(s, time, em_fit, exponentiate_coefs)
 }
 \arguments{
 \item{s}{output of \code{run_inference_on_em_fit}}

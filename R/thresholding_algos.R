@@ -46,6 +46,8 @@ get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covari
 #' @return coefficient table
 #' @export
 run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha) {
+  if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
+  if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
   # pull g_fam and m_fam from dat, if available
   if ("m_precomp" %in% names(attributes(dat)) && "g_precomp" %in% names(attributes(dat))) {
     m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam

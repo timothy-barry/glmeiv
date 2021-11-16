@@ -7,8 +7,8 @@
 run_reduced_em_algo(
   m,
   g,
-  exp_m_offset,
-  exp_g_offset,
+  m_fitted,
+  g_fitted,
   m_pert_guess,
   g_pert_guess,
   pi_guess,
@@ -24,9 +24,9 @@ run_reduced_em_algo(
 
 \item{g}{gRNA counts}
 
-\item{exp_m_offset}{exponentiated m offsets (i.e., fitted values from mRNA GLM)}
+\item{m_fitted}{fitted values on linear scale of mRNA model}
 
-\item{exp_g_offset}{exponentiated g offsets (i.e., fitted values from gRNA GLM)}
+\item{g_fitted}{fitted values on linear scale of gRNA model}
 
 \item{m_pert_guess}{initial guess for m perturbation parameter}
 
@@ -59,12 +59,13 @@ The function requires initial estimates for the parameters m_perturbation, g_per
 }
 \examples{
 set.seed(4)
-m_fam <- g_fam <- augment_family_object(poisson())
+# NB response
+m_fam <- g_fam <- augment_family_object(MASS::negative.binomial(20))
 m_intercept <- 0
 g_intercept <- 0
 m_perturbation <- log(0.6)
 g_perturbation <- log(1.4)
-pi <- 0.01
+pi <- 0.02
 n <- 100000
 m_offset <- log(stats::rpois(n, 100))
 g_offset <- log(stats::rpois(n, 50))
@@ -79,8 +80,34 @@ g_pert_guess <- log(runif(1, 0.5, 10))
 pi_guess <- runif(1, 0, 0.05)
 m <- dat$m
 g <- dat$g
-exp_m_offset <- exp(m_offset)
-exp_g_offset <- exp(g_offset)
-fit_univariate <- run_reduced_em_algo(m, g, exp_m_offset, exp_g_offset,
+m_fitted <- m_offset
+g_fitted <- g_offset
+fit_univariate <- run_reduced_em_algo(m, g, m_fitted, g_fitted,
+m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam)
+
+# Gaussian
+m_fam <- g_fam <- augment_family_object(gaussian())
+m_intercept <- 0
+g_intercept <- 0
+m_perturbation <- 2
+g_perturbation <- -1
+pi <- 0.02
+n <- 100000
+m_offset <- log(stats::rpois(n, 100))
+g_offset <- log(stats::rpois(n, 50))
+dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept, m_perturbation = m_perturbation,
+g_fam = g_fam, g_intercept = g_intercept, g_perturbation = g_perturbation, pi = pi, n = n, B = 2,
+covariate_matrix = NULL, m_covariate_coefs = NULL, g_covariate_coefs = NULL, m_offset = m_offset,
+g_offset = g_offset)[[1]]
+m_fit <- glm(formula = m ~ p + 0, family = m_fam, data = dat, offset = m_offset)
+g_fit <- glm(formula = g ~ p + 0, family = g_fam, data = dat, offset = g_offset)
+m_pert_guess <- 3
+g_pert_guess <- -2
+pi_guess <- runif(1, 0, 0.05)
+m <- dat$m
+g <- dat$g
+m_fitted <- m_offset
+g_fitted <- g_offset
+fit_univariate <- run_reduced_em_algo(m, g, m_fitted, g_fitted,
 m_pert_guess, g_pert_guess, pi_guess, m_fam, g_fam)
 }

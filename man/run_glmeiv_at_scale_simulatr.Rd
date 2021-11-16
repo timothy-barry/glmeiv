@@ -16,7 +16,8 @@ run_glmeiv_at_scale_simulatr(
   save_membership_probs_mult = 250,
   pi_guess_range = c(1e-05, 0.03),
   m_perturbation_guess_range = log(c(0.1, 1.5)),
-  g_perturbation_guess_range = log(c(0.5, 10))
+  g_perturbation_guess_range = log(c(0.5, 10)),
+  exponentiate_coefs = FALSE
 )
 }
 \arguments{
@@ -44,6 +45,8 @@ run_glmeiv_at_scale_simulatr(
 
 \item{g_perturbation_guess_range}{range of values over which to sample g_perturbation}
 
+\item{exponentiate_coefs}{(boolean) should the fitted coeficients (and associated standard errors) be exponentiated?}
+
 \item{fam_str}{string (currently either "poisson" or "Negative Binomial") giving family object}
 }
 \value{
@@ -57,7 +60,7 @@ m_fam <- g_fam <- augment_family_object(poisson())
 n <- 200000
 lib_size <- rpois(n = n, lambda = 5000)
 m_offset <- g_offset <- log(lib_size)
-pi <- 0.005
+pi <- 0.01
 m_intercept <- log(0.01)
 m_perturbation <- log(0.5)
 g_intercept <- log(0.005)
@@ -73,4 +76,5 @@ g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)
 m <- dat$m; g <- dat$g; p <- dat$p
 # ability to recover ground truth given p
 fit <- run_glmeiv_at_scale_simulatr(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
+fit <- run_glmeiv_random_init_simulatr(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
 }

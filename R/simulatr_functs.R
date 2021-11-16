@@ -42,6 +42,10 @@
 generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_intercept, g_perturbation, pi, n,
                                B, covariate_matrix, m_covariate_coefs, g_covariate_coefs, m_offset, g_offset,
                                run_unknown_theta_precomputation = FALSE) {
+  # if m_fam/g_fam in list form, extract
+  if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
+  if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
+
   # sample a B x n matrix of perturbation indicators
   perturbation_indicators <- matrix(data = stats::rbinom(n = n * B, size = 1, prob = pi), nrow = n, ncol = B)
   # call above for both m and g
@@ -152,7 +156,7 @@ process_glmeiv_results_simulatr <- function(em_fit, s, time, dat, save_membershi
 #'
 #' @return
 #' @export
-create_simulatr_specifier_object_v2 <- function(param_grid, fixed_params, one_rep_times, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
+create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
   methods <- sort(methods)
   ####################################
   # 1. Define data_generator function.

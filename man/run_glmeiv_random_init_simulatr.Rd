@@ -20,7 +20,8 @@ run_glmeiv_random_init_simulatr(
   m_intercept_guess_range = log(c(1e-04, 0.1)),
   g_intercept_guess_range = log(c(1e-04, 0.1)),
   m_covariate_coefs_guess_range = log(c(0.5, 1.5)),
-  g_covariate_coefs_guess_range = log(c(0.5, 1.5))
+  g_covariate_coefs_guess_range = log(c(0.5, 1.5)),
+  exponentiate_coefs = FALSE
 )
 }
 \arguments{
@@ -55,10 +56,31 @@ run_glmeiv_random_init_simulatr(
 \item{m_covariate_coefs_guess_range}{range over which to sample m_covariate_coefs}
 
 \item{g_covariate_coefs_guess_range}{range over which to sample g_covariate_coefs}
+
+\item{exponentiate_coefs}{(boolean) should the estimated coefficients (and CIs) be exponentiated?}
 }
 \value{
 a fitted GLM-EIV object
 }
 \description{
 Runs GLM-EIV using random initializations for the parameters. Currently, the function assumes that there is (at most) a single covariate term.
+}
+\examples{
+# A simpler Gaussian example
+m_fam <- g_fam <- gaussian() \%>\% augment_family_object()
+n <- 20000
+B <- 2
+pi <- 0.05
+m_intercept <- 1
+m_perturbation <- -2
+g_intercept <- -1
+g_perturbation <- 2
+covariate_matrix <- m_covariate_coefs <- m_covariate_coefs <- m_offset <- g_offset <- NULL
+dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
+m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
+g_perturbation = g_perturbation, pi = pi, n = n, B = B,
+covariate_matrix = covariate_matrix, m_covariate_coefs = m_covariate_coefs,
+g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
+fit <- run_glmeiv_random_init_simulatr(dat = dat, m_fam = m_fam, g_fam = g_fam,
+covariate_matrix = NULL, m_offset = NULL, g_offset = NULL)
 }

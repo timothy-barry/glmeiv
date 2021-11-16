@@ -4,7 +4,7 @@
 \alias{select_best_em_run}
 \title{Select best EM run}
 \usage{
-select_best_em_run(em_runs, m_perturbation_range = c(log(0.1), log(1.25)))
+select_best_em_run(em_runs, m_perturbation_range = c(log(0.1), log(2)))
 }
 \arguments{
 \item{em_runs}{a list of outputs of run_em_algo_given_init}

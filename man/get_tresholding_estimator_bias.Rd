@@ -4,14 +4,27 @@
 \alias{get_tresholding_estimator_bias}
 \title{Get bias of thresholding estimator}
 \usage{
-get_tresholding_estimator_bias(m_perturbation, g_perturbation, pi)
+get_tresholding_estimator_bias(
+  m_perturbation,
+  g_perturbation,
+  g_intercept,
+  pi,
+  c,
+  return_bias = TRUE
+)
 }
 \arguments{
 \item{m_perturbation}{perturbation coefficient for mRNA model}
 
 \item{g_perturbation}{perturbation coefficient for gRNA model}
 
+\item{g_intercept}{intercept term in gRNA model}
+
 \item{pi}{probability of perturbation}
+
+\item{c}{the threshold}
+
+\item{return_bias}{if TRUE, returns (absolute) bias, defined as ; if FALSE, returns attenuation fraction}
 }
 \value{
 the bias of the thresholding estimator
@@ -21,4 +34,12 @@ Assumes without loss of generality that m_intercept and g_intercept are 0. Also,
 }
 \details{
 Assumes errors are N(0,1).
+}
+\examples{
+m_perturbation <- 1
+g_perturbation <- 1
+g_intercept <- 0.5
+pi <- 0.5
+c <- 1
+get_tresholding_estimator_bias(m_perturbation, g_perturbation, g_intercept, pi, c)
 }
