@@ -221,7 +221,7 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
                                                 g_perturbation_guess = guesses$g_perturbation[i],
                                                 g_covariate_coefs_guess = guesses$g_covariate_coefs[i],
                                                 covariate_matrix = covariate_matrix,
-                                                m_offset = m_offset, g_offset = g_offset)
+                                                m_offset = m_offset, g_offset = g_offset, max_it = 15)
       if (fit$log_lik > best_log_lik) {
         best_fit <- fit
         best_log_lik <- fit$log_lik
