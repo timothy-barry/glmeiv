@@ -86,7 +86,6 @@ run_reduced_em_algo <- function(m, g, m_fitted, g_fitted, m_pert_guess, g_pert_g
   curr_m_perturbation <- m_pert_guess; curr_g_perturbation <- g_pert_guess; curr_pi <- pi_guess
   iteration <- 1L
   log_liks <- numeric()
-
   # Iterate through E and M steps until convergence.
   while (TRUE) {
     # E step
@@ -148,6 +147,7 @@ run_m_step_univariate <- function(m, g, m_fitted, g_fitted, curr_Ti1s, m_fam, g_
   out <- list(fit_m_perturbation = fit_m, fit_g_perturbation = fit_g)
   return(out)
 }
+
 
 fit_model_univariate <- function(v, curr_Ti1s, fitted, fam) {
   if (fam$fam_str %in% c("poisson", "Negative Binomial")) {

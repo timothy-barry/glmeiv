@@ -59,7 +59,6 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
   }, simplify = FALSE)
   if (run_unknown_theta_precomputation) {
     for (i in seq(1L, B)) {
-      print(i)
       fam <- MASS::negative.binomial(NA) %>% augment_family_object()
       m_precomp <- run_glmeiv_precomputation(y = data_list[[i]]$m,
                                              covariate_matrix = covariate_matrix,

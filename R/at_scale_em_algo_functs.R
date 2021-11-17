@@ -138,7 +138,7 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
     s <- run_inference_on_em_fit(fit, alpha)
     })[["elapsed"]]
   # do post-processing (by a call to a function), then return result.
-  out <- wrangle_glmeiv_result(s, time, fit, exponentiate_coefs)
+  out <- wrangle_glmeiv_result(s, time, fit, exponentiate_coefs, save_membership_probs_mult, attr(dat, "i"))
   return(out)
 }
 
@@ -180,7 +180,7 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
 #' g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
 #' fit <- run_glmeiv_random_init_simulatr(dat = dat, m_fam = m_fam, g_fam = g_fam,
 #' covariate_matrix = NULL, m_offset = NULL, g_offset = NULL)
-run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), m_intercept_guess_range = log(c(1e-4, 1e-1)), g_intercept_guess_range = log(c(1e-4, 1e-1)), m_covariate_coefs_guess_range = log(c(0.5, 1.5)), g_covariate_coefs_guess_range = log(c(0.5, 1.5)), exponentiate_coefs = FALSE) {
+run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), m_intercept_guess_range = log(c(1e-4, 1e-1)), g_intercept_guess_range = log(c(1e-4, 1e-1)), m_covariate_coefs_guess_range = log(c(0.25, 2)), g_covariate_coefs_guess_range = log(c(0.25, 2)), exponentiate_coefs = FALSE) {
   # if m_fam/g_fam is list, extract
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
@@ -212,7 +212,6 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
                          })
     # fit models for each starting guess
     for (i in seq(1L, n_em_rep)) {
-      print(paste0("Rep ", i))
       fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
                                                 pi_guess = guesses$pi[i],
                                                 m_intercept_guess = guesses$m_intercept[i],
@@ -231,7 +230,7 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
   s <- run_inference_on_em_fit(best_fit)
   })[["elapsed"]]
   # process the result
-  out <- wrangle_glmeiv_result(s, time, best_fit, exponentiate_coefs)
+  out <- wrangle_glmeiv_result(s, time, best_fit, exponentiate_coefs, save_membership_probs_mult, attr(dat, "i"))
   return(out)
 }
 
@@ -246,7 +245,7 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
 #'
 #' @return data frame with results in tidy form
 #' @export
-wrangle_glmeiv_result <- function(s, time, em_fit, exponentiate_coefs) {
+wrangle_glmeiv_result <- function(s, time, em_fit, exponentiate_coefs, save_membership_probs_mult, i) {
   if (exponentiate_coefs) {
     s <- dplyr::filter(s, parameter != "pi") %>%
       dplyr::select(parameter, estimate, p_value, confint_lower, confint_upper) %>%
@@ -264,6 +263,10 @@ wrangle_glmeiv_result <- function(s, time, em_fit, exponentiate_coefs) {
                             target = c("converged", "membership_probability_spread",
                                        "n_approx_0", "n_approx_1", "time"),
                             value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1, time))
+  if (i %% save_membership_probs_mult == 0) {
+    meta_df <- rbind(meta_df, tibble::tibble(parameter = "meta", target = "membership_probability",
+                              value = em_fit$posterior_perturbation_probs))
+  }
   out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
   return(out)
 }
