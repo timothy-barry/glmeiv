@@ -227,7 +227,8 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
                                            g_covariate_coefs_guess = rep(guesses$g_covariate_coefs[i], n_covariates),
                                            covariate_matrix = covariate_matrix,
                                            m_offset = m_offset, g_offset = g_offset, max_it = 15)
-      }, error = function(e) return(list(log_lik = -Inf)))
+      }, error = function(e) return(list(log_lik = -Inf)),
+         warning = function(w) return(list(log_lik = -Inf)))
       if (fit$log_lik > best_log_lik) {
         best_fit <- fit
         best_log_lik <- fit$log_lik
