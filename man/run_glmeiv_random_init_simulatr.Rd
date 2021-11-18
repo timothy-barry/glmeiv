@@ -19,8 +19,8 @@ run_glmeiv_random_init_simulatr(
   g_perturbation_guess_range = log(c(0.5, 10)),
   m_intercept_guess_range = log(c(1e-04, 0.1)),
   g_intercept_guess_range = log(c(1e-04, 0.1)),
-  m_covariate_coefs_guess_range = log(c(0.5, 1.5)),
-  g_covariate_coefs_guess_range = log(c(0.5, 1.5)),
+  m_covariate_coefs_guess_range = log(c(0.25, 2)),
+  g_covariate_coefs_guess_range = log(c(0.25, 2)),
   exponentiate_coefs = FALSE
 )
 }
@@ -75,7 +75,9 @@ m_intercept <- 1
 m_perturbation <- -2
 g_intercept <- -1
 g_perturbation <- 2
-covariate_matrix <- m_covariate_coefs <- m_covariate_coefs <- m_offset <- g_offset <- NULL
+m_offset <- g_offset <- NULL
+covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
+m_covariate_coefs <- g_covariate_coefs <- 0.5
 dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
 m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
 g_perturbation = g_perturbation, pi = pi, n = n, B = B,

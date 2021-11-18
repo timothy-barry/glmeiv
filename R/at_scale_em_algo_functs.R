@@ -172,7 +172,9 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
 #' m_perturbation <- -2
 #' g_intercept <- -1
 #' g_perturbation <- 2
-#' covariate_matrix <- m_covariate_coefs <- m_covariate_coefs <- m_offset <- g_offset <- NULL
+#' m_offset <- g_offset <- NULL
+#' covariate_matrix <- data.frame(batch = rbinom(n = n, size = 1, prob = 0.5))
+#' m_covariate_coefs <- g_covariate_coefs <- 0.5
 #' dat <- generate_full_data(m_fam = m_fam, m_intercept = m_intercept,
 #' m_perturbation = m_perturbation, g_fam = g_fam, g_intercept = g_intercept,
 #' g_perturbation = g_perturbation, pi = pi, n = n, B = B,
@@ -198,6 +200,8 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
   }
   best_fit <- NULL
   best_log_lik <- -Inf
+  n_covariates <- ncol(covariate_matrix)
+
   # run method, timing the result
   time <- system.time({
   # generate guesses
@@ -212,25 +216,35 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
                          })
     # fit models for each starting guess
     for (i in seq(1L, n_em_rep)) {
-      fit <- run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
-                                                pi_guess = guesses$pi[i],
-                                                m_intercept_guess = guesses$m_intercept[i],
-                                                m_perturbation_guess = guesses$m_perturbation[i],
-                                                m_covariate_coefs_guess = guesses$m_covariate_coefs[i],
-                                                g_intercept_guess = guesses$g_intercept[i],
-                                                g_perturbation_guess = guesses$g_perturbation[i],
-                                                g_covariate_coefs_guess = guesses$g_covariate_coefs[i],
-                                                covariate_matrix = covariate_matrix,
-                                                m_offset = m_offset, g_offset = g_offset, max_it = 15)
+      fit <- tryCatch({
+        run_full_glmeiv_given_pilot_params(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
+                                           pi_guess = guesses$pi[i],
+                                           m_intercept_guess = guesses$m_intercept[i],
+                                           m_perturbation_guess = guesses$m_perturbation[i],
+                                           m_covariate_coefs_guess = rep(guesses$m_covariate_coefs[i], n_covariates),
+                                           g_intercept_guess = guesses$g_intercept[i],
+                                           g_perturbation_guess = guesses$g_perturbation[i],
+                                           g_covariate_coefs_guess = rep(guesses$g_covariate_coefs[i], n_covariates),
+                                           covariate_matrix = covariate_matrix,
+                                           m_offset = m_offset, g_offset = g_offset, max_it = 15)
+      }, error = function(e) return(list(log_lik = -Inf)))
       if (fit$log_lik > best_log_lik) {
         best_fit <- fit
         best_log_lik <- fit$log_lik
       }
     }
-  s <- run_inference_on_em_fit(best_fit)
+  if (best_log_lik > -Inf) {
+    s <- run_inference_on_em_fit(best_fit)
+    success <- TRUE
+  } else {
+    out <- data.frame(parameter = "meta", target = "converged", value = 0)
+    success <- FALSE
+  }
   })[["elapsed"]]
   # process the result
-  out <- wrangle_glmeiv_result(s, time, best_fit, exponentiate_coefs, save_membership_probs_mult, attr(dat, "i"))
+  if (success) {
+    out <- wrangle_glmeiv_result(s, time, best_fit, exponentiate_coefs, save_membership_probs_mult, attr(dat, "i"))
+  }
   return(out)
 }
 

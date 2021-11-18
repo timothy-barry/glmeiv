@@ -242,6 +242,7 @@ run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, 
 #' g_perturbation_guess = log(1.4), g_covariate_coefs_guess = log(1.2),
 #' covariate_matrix = covariate_matrix, m_offset = m_offsets, g_offset = g_offsets)
 run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset, ep_tol = 1e-4, max_it = 75) {
+  if (rbinom(n = 1, size = 1, prob = 0.1)) stop("planned error")
   # compute the conditional means
   m_conditional_means <- compute_theoretical_conditional_means(intercept = m_intercept_guess,
                                                                perturbation_coef = m_perturbation_guess,
