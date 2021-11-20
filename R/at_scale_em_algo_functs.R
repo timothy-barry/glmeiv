@@ -13,7 +13,7 @@
 #'
 #' @return a fitted GLM-EIV model
 #' @export
-run_glmeiv_given_precomputations <- function(m, g, m_precomp, g_precomp, covariate_matrix, m_offset, g_offset, n_em_rep, pi_guess_range, m_perturbation_guess_range, g_perturbation_guess_range) {
+run_glmeiv_given_precomputations <- function(m, g, m_precomp, g_precomp, covariate_matrix, m_offset, g_offset, n_em_rep, pi_guess_range, m_perturbation_guess_range, g_perturbation_guess_range, ep_tol = 1e-4) {
   set.seed(4)
   m_fam <- m_precomp$fam
   g_fam <- g_precomp$fam
@@ -44,7 +44,7 @@ run_glmeiv_given_precomputations <- function(m, g, m_precomp, g_precomp, covaria
                                             m_perturbation_guess = best_run$m_perturbation, m_covariate_coefs_guess = m_precomp$covariate_coefs,
                                             g_intercept_guess = g_precomp$fitted_intercept, g_perturbation_guess = best_run$g_perturbation,
                                             g_covariate_coefs_guess = g_precomp$covariate_coefs, covariate_matrix = covariate_matrix,
-                                            m_offset = m_offset, g_offset = g_offset)
+                                            m_offset = m_offset, g_offset = g_offset, ep_tol = ep_tol)
   return(fit)
 }
 
@@ -134,7 +134,11 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
   }
   # run glmeiv given precomputations, timing it.
   time <- system.time({
-    fit <- run_glmeiv_given_precomputations(m = m, g = g, m_precomp = m_precomp, g_precomp = g_precomp, covariate_matrix = covariate_matrix, m_offset = m_offset, g_offset = g_offset, n_em_rep = n_em_rep, pi_guess_range = pi_guess_range, m_perturbation_guess_range = m_perturbation_guess_range, g_perturbation_guess_range = g_perturbation_guess_range)
+    fit <- run_glmeiv_given_precomputations(m = m, g = g, m_precomp = m_precomp, g_precomp = g_precomp,
+                                            covariate_matrix = covariate_matrix, m_offset = m_offset,
+                                            g_offset = g_offset, n_em_rep = n_em_rep, pi_guess_range = pi_guess_range,
+                                            m_perturbation_guess_range = m_perturbation_guess_range,
+                                            g_perturbation_guess_range = g_perturbation_guess_range, ep_tol = 1e-4)
     s <- run_inference_on_em_fit(fit, alpha)
     })[["elapsed"]]
   # do post-processing (by a call to a function), then return result.
@@ -226,7 +230,7 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
                                            g_perturbation_guess = guesses$g_perturbation[i],
                                            g_covariate_coefs_guess = rep(guesses$g_covariate_coefs[i], n_covariates),
                                            covariate_matrix = covariate_matrix,
-                                           m_offset = m_offset, g_offset = g_offset, max_it = 15)
+                                           m_offset = m_offset, g_offset = g_offset, max_it = 15, ep_tol = 1e-5)
       }, error = function(e) return(list(log_lik = -Inf)),
          warning = function(w) return(list(log_lik = -Inf)))
       if (fit$log_lik > best_log_lik) {

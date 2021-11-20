@@ -83,7 +83,7 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
 #' initial_Ti1s <- runif(n)
 #' fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix,
 #' initial_Ti1s, m_offset, g_offset)
-run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-5, max_it = 15) {
+run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-4, max_it = 15) {
   # augment family objects, if necessary
   if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
   if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
@@ -241,7 +241,7 @@ run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, 
 #' m_covariate_coefs_guess = log(1.4), g_intercept_guess = log(0.05),
 #' g_perturbation_guess = log(1.4), g_covariate_coefs_guess = log(1.2),
 #' covariate_matrix = covariate_matrix, m_offset = m_offsets, g_offset = g_offsets)
-run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset, ep_tol = 1e-4, max_it = 75) {
+run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset, ep_tol = 1e-5, max_it = 75) {
   if (rbinom(n = 1, size = 1, prob = 0.1)) stop("planned error")
   # compute the conditional means
   m_conditional_means <- compute_theoretical_conditional_means(intercept = m_intercept_guess,

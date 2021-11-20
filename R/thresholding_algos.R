@@ -80,14 +80,14 @@ run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g
       row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
       mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
       confint_lower <- s[,"Estimate"] - mult_factor * s[,"Std. Error"]
-      confint_higher <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
-      names(confint_lower) <- names(confint_higher) <- NULL
+      confint_upper <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
+      names(confint_lower) <- names(confint_upper) <- NULL
       out <- data.frame(parameter = paste0("m_", row.names(s)),
                         estimate = s[,"Estimate"],
                         std_error = s[,"Std. Error"],
                         p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],
                         confint_lower = confint_lower,
-                        confint_higher = confint_higher) %>%
+                        confint_upper= confint_upper) %>%
         tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
         dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%
         dplyr::add_row(parameter = "meta", target = "sum_phat", value = s_phat)
