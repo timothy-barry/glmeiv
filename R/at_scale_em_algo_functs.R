@@ -117,7 +117,7 @@ run_glmeiv_precomputation <- function(y, covariate_matrix, offset, fam) {
 #' # ability to recover ground truth given p
 #' fit <- run_glmeiv_at_scale_simulatr(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
 #' fit <- run_glmeiv_random_init_simulatr(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
-run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), exponentiate_coefs = FALSE) {
+run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), exponentiate_coefs = FALSE, ep_tol = 1e-4) {
   # if m_fam/g_fam is list, extract
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
@@ -138,7 +138,7 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
                                             covariate_matrix = covariate_matrix, m_offset = m_offset,
                                             g_offset = g_offset, n_em_rep = n_em_rep, pi_guess_range = pi_guess_range,
                                             m_perturbation_guess_range = m_perturbation_guess_range,
-                                            g_perturbation_guess_range = g_perturbation_guess_range, ep_tol = 1e-4)
+                                            g_perturbation_guess_range = g_perturbation_guess_range, ep_tol = ep_tol)
     s <- run_inference_on_em_fit(fit, alpha)
     })[["elapsed"]]
   # do post-processing (by a call to a function), then return result.
