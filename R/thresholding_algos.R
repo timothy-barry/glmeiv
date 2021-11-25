@@ -115,7 +115,7 @@ run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g
 #'
 #' @return data frame of fitted parameters and CIs.
 #' @export
-run_thresholding_method <- function(phat, m, m_fam, m_offset, covariate_matrix, n_examples_per_param = 5, alpha = 0.95) {
+run_thresholding_method <- function(phat, m, m_fam, m_offset, covariate_matrix, n_examples_per_param = 5, alpha = 0.95, exponentiate_coefs = TRUE) {
   data_mat <- data.frame(m = m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
   # check if enough examples
   s_phat <- sum(phat)
@@ -135,12 +135,12 @@ run_thresholding_method <- function(phat, m, m_fam, m_offset, covariate_matrix, 
       confint_upper <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
       out <- data.frame(parameter = paste0("m_", row.names(s)),
                         estimate = s[,"Estimate"],
-                        p_value = s[,"Pr(>|t|)"],
+                        p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],
                         confint_lower = confint_lower,
                         confint_upper = confint_upper) %>%
-        dplyr::mutate(estimate = exp(estimate),
-                      confint_lower = exp(confint_lower),
-                      confint_upper = exp(confint_upper)) %>%
+        dplyr::mutate(estimate = if (exponentiate_coefs) exp(estimate) else estimate,
+                      confint_lower =  if (exponentiate_coefs) exp(confint_lower) else confint_lower,
+                      confint_upper = if (exponentiate_coefs) exp(confint_upper) else confint_upper) %>%
         tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
         dplyr::add_row(parameter = "meta", target = "log_lik", value = log_lik) %>%
         dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%

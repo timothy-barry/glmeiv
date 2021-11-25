@@ -311,3 +311,9 @@ select_best_em_run <- function(em_runs, m_perturbation_range = c(log(0.1), log(2
   log_liks <- sapply(em_runs, function(run) run$log_lik)
   return(em_runs[[which.max(log_liks)]])
 }
+
+
+compute_mean_distance_from_half <- function(v) {
+  n <- length(v)
+  2 * mean(abs(v - 0.5))
+}

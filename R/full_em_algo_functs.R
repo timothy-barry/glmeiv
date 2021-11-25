@@ -267,9 +267,3 @@ run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_i
                                             m_offset = m_offset, g_offset = g_offset, ep_tol = ep_tol, max_it = max_it)
   return(out)
 }
-
-
-compute_mean_distance_from_half <- function(v) {
-  n <- length(v)
-  2 * sum(abs(v - 0.5))/n
-}

@@ -114,38 +114,6 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
 }
 
 
-#' Process GLM-EIV results simulatr
-#'
-#' Processes the results outputted by a GLM-EIV method for use in simulatr.
-#'
-#' @param em_fit the fitted GLM-EIV model
-#' @param s data frame of fitted coefficients and inferences
-#' @param dat the data
-#' @param save_membership_probs_mult integer giving multiple to save membership probabilities
-#' @param time execution time (in s)
-#'
-#' @return a processed, long data frame
-process_glmeiv_results_simulatr <- function(em_fit, s, time, dat, save_membership_probs_mult) {
-  membership_prob_spread <- compute_mean_distance_from_half(em_fit$posterior_perturbation_probs)
-  n_approx_1 <- sum(em_fit$posterior_perturbation_probs > 0.85)
-  n_approx_0 <- sum(em_fit$posterior_perturbation_probs < 0.15)
-  # output result
-  meta_df <- tibble::tibble(parameter = "meta",
-                          target = c("converged", "membership_probability_spread",
-                                     "n_approx_0", "n_approx_1", "time"),
-                          value = c(em_fit$converged, membership_prob_spread, n_approx_0, n_approx_1, time))
-  out <- rbind(tidyr::pivot_longer(s, cols = -parameter, names_to = "target"), meta_df)
-  # if i is a multiple of 250, save the posterior membership probabilities
-  i <- attr(dat, "i")
-  if (!is.null(i) && (i - 1 + save_membership_probs_mult) %% save_membership_probs_mult == 0) {
-    out <- rbind(out, data.frame(parameter = "meta",
-                               target = "membership_prob",
-                               value = em_fit$posterior_perturbation_probs))
-  }
- return(out)
-}
-
-
 #' Create simulatr specifier object (v2)
 #'
 #' @param param_grid grid of parameters
