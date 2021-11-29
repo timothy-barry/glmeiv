@@ -142,7 +142,7 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
     s <- run_inference_on_em_fit(fit, alpha)
     })[["elapsed"]]
   # do post-processing (by a call to a function), then return result.
-  out <- wrangle_glmeiv_result(s, time, fit, exponentiate_coefs, save_membership_probs_mult, attr(dat, "i"))
+  out <- wrangle_glmeiv_result(s, time, fit, exponentiate_coefs, save_membership_probs_mult, if (!is.null(attr(dat, "i"))) attr(dat, "i") else 1)
   return(out)
 }
 
