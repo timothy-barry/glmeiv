@@ -27,12 +27,12 @@ get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covari
   # get theoretical conditional means
   conditional_means <- compute_theoretical_conditional_means(g_intercept, g_perturbation, g_fam, covariate_matrix, g_covariate_coefs, g_offset)
   # compute the Bayes-optimal boundary
-  if (is.null(covariate_matrix)) {
+  if (is.null(covariate_matrix) && is.null(g_offset)) {
     bdy <- g_fam$bayes_classifier(conditional_means$mu0, conditional_means$mu1, pi)
   } else {
     mu0s <- conditional_means$mu0
     mu1s <- conditional_means$mu1
-    bdy <- mean(g_fam$bayes_classifier(mu0s, mu1s, pi))
+    bdy <- median(g_fam$bayes_classifier(mu0s, mu1s, pi))
   }
   return(bdy)
 }
