@@ -123,51 +123,114 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
 #'
 #' @return
 #' @export
-create_simulatr_specifier_object <- function(param_grid, fixed_params, one_rep_times, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
+create_simulatr_specifier_object <- function(param_grid, fixed_params, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
   methods <- sort(methods)
+  ####################################
+  # 0. Define the evaluation functions
+  ####################################
+  obtain_target <- function(output, target_name) {
+    # first, check validity
+    meta_block <- output |> dplyr::filter(parameter == "meta")
+    if ("converged" %in% meta_block$target) {
+      target_exists <- (meta_block |> dplyr::filter(target == "converged") |> dplyr::pull(value)) == 1
+    } else if ("fit_attempted" %in%  meta_block$target) {
+      target_exists <- (meta_block |> dplyr::filter(target == "fit_attempted") |> dplyr::pull(value)) == 1
+    } else {
+      stop("output not recognized")
+    }
+    if (target_exists) {
+      if (target_name == "time") {
+        ret <- meta_block |> dplyr::filter(target == "time") |> dplyr::pull("value")
+      } else {
+        ret <- output |> dplyr::filter(parameter == "m_perturbation" & target == target_name) |>
+          dplyr::pull("value")
+      }
+    } else {
+      ret <- NA
+    }
+    return(ret)
+  }
+
+  # bias
+  compute_bias <- function(output, ground_truth) {
+    estimate <- obtain_target(output, "estimate")
+    if (is.na(estimate)) NA else (estimate - ground_truth)
+  }
+
+  # mse
+  compute_mse <- function(output, ground_truth) {
+    estimate <- obtain_target(output, "estimate")
+    if (is.na(estimate)) NA else (estimate - ground_truth)^2
+  }
+
+  # coverage
+  compute_coverage <- function(output, ground_truth) {
+    confint_upper <- obtain_target(output, "confint_upper")
+    confint_lower <- obtain_target(output, "confint_lower")
+    if (is.na(confint_upper) || is.na(confint_lower)) {
+      NA
+    } else {
+      ground_truth >= confint_lower && ground_truth <= confint_upper
+    }
+  }
+
+  # ci width
+  compute_ci_width <- function(output, ground_truth) {
+    confint_upper <- obtain_target(output, "confint_upper")
+    confint_lower <- obtain_target(output, "confint_lower")
+    if (is.na(confint_upper) || is.na(confint_lower)) {
+      NA
+    } else {
+      confint_upper - confint_lower
+    }
+  }
+
+  # time
+  compute_time <- function(output, ground_truth) {
+    time <- obtain_target(output, "time")
+    if (is.na(time)) NA else time
+  }
+
+  # rejection indicator
+  compute_rejection_indicator <- function(output, ground_truth) {
+    reject <- obtain_target(output, "p_value") < 0.05
+    if (is.na(reject)) NA else reject
+  }
+
+  evaluation_functions <- list(bias = compute_bias, mse = compute_mse,
+                               coverage = compute_coverage, ci_width = compute_ci_width,
+                               time = compute_time, rejection_indicator = compute_rejection_indicator)
+
   ####################################
   # 1. Define data_generator function.
   ####################################
   data_generator_object <- simulatr::simulatr_function(f = generate_full_data,
-                                                       arg_names = c("m_fam", "m_intercept", "m_perturbation", "g_fam", "g_intercept", "g_perturbation", "pi",
-                                                                     "n", "B", "covariate_matrix", "m_covariate_coefs", "g_covariate_coefs", "m_offset", "g_offset",
-                                                                     "run_unknown_theta_precomputation"),
+                                                       arg_names = formalArgs(generate_full_data),
                                                        packages = "glmeiv",
-                                                       loop = FALSE,
-                                                       one_rep_time = one_rep_times[["generate_data_function"]])
+                                                       loop = FALSE)
 
   method_list <- c(
     if ("glmeiv_fast" %in% methods) simulatr::simulatr_function(f = run_glmeiv_at_scale_simulatr,
-                                                                arg_names = c("m_fam", "g_fam", "covariate_matrix", "m_offset", "g_offset", "alpha",
-                                                                              "n_em_rep", "save_membership_probs_mult", "pi_guess_range",
-                                                                              "m_perturbation_guess_range", "g_perturbation_guess_range",
-                                                                              "exponentiate_coefs", "ep_tol"),
+                                                                arg_names = formalArgs(run_glmeiv_at_scale_simulatr)[-1],
                                                                 packages = "glmeiv",
-                                                                loop = TRUE,
-                                                                one_rep_time = one_rep_times[["glmeiv_fast"]]) else NULL,
+                                                                loop = TRUE),
     if ("glmeiv_slow" %in% methods) simulatr::simulatr_function(f = run_glmeiv_random_init_simulatr,
-                                                                arg_names = c("m_fam", "g_fam", "covariate_matrix", "m_offset",
-                                                                              "g_offset", "alpha", "n_em_rep", "save_membership_probs_mult",
-                                                                              "pi_guess_range", "m_perturbation_guess_range", "g_perturbation_guess_range",
-                                                                              "m_intercept_guess_range", "g_intercept_guess_range", "m_covariate_coefs_guess_range",
-                                                                              "g_covariate_coefs_guess_range"),
+                                                                arg_names = formalArgs(run_glmeiv_random_init_simulatr)[-1],
                                                                 packages = "glmeiv",
-                                                                loop = TRUE,
-                                                                one_rep_time = one_rep_times[["glmeiv_slow"]]) else NULL,
+                                                                loop = TRUE),
     if ("thresholding" %in% methods) simulatr::simulatr_function(f = run_thresholding_method_simulatr,
-                                                                 arg_names = c("g_intercept", "g_perturbation",
-                                                                               "g_fam", "m_fam", "pi", "covariate_matrix",
-                                                                               "g_covariate_coefs", "m_offset", "g_offset", "alpha"),
-                                                                 packages = "glmeiv", loop = TRUE, one_rep_time = one_rep_times[["thresholding"]]) else NULL
+                                                                 arg_names = formalArgs(run_thresholding_method_simulatr)[-1],
+                                                                 packages = "glmeiv", loop = TRUE)
     )
   names(method_list) <- methods
 
   ################################
   # 5. Instantiate sim_spec object
   ################################
-  ret <- simulatr::simulatr_specifier(parameter_grid = param_grid,
-                                      fixed_parameters = fixed_params,
-                                      generate_data_function = data_generator_object,
-                                      run_method_functions = method_list)
-  return(ret)
+  sim_spec <- simulatr::simulatr_specifier(parameter_grid = param_grid,
+                                           fixed_parameters = fixed_params,
+                                           generate_data_function = data_generator_object,
+                                           run_method_functions = method_list,
+                                           evaluation_functions = evaluation_functions)
+  return(sim_spec)
 }
