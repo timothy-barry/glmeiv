@@ -49,8 +49,10 @@ run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
   # pull g_fam and m_fam from dat, if available
-  if ("m_precomp" %in% names(attributes(dat)) && "g_precomp" %in% names(attributes(dat))) {
+  if ("m_precomp" %in% names(attributes(dat))) {
     m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam
+  }
+  if ("g_precomp" %in% names(attributes(dat))) {
     g_precomp <- attr(dat, "g_precomp"); g_fam <- g_precomp$fam
   }
   m <- dat$m

@@ -19,7 +19,7 @@ run_full_glmeiv_given_pilot_params(
   covariate_matrix,
   m_offset,
   g_offset,
-  ep_tol = 1e-04,
+  ep_tol = 1e-05,
   max_it = 75
 )
 }

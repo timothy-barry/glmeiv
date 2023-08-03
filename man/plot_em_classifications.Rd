@@ -8,8 +8,8 @@ plot_em_classifications(
   em_classifications,
   sim_spec,
   grid_row_id,
-  categories = c("confident-plausible", "confident-implausible",
-    "unconfident-plausible", "unconfident-implausible"),
+  categories = c("confident-plausible", "confident-implausible", "unconfident-plausible",
+    "unconfident-implausible"),
   parameter = "m_perturbation"
 )
 }

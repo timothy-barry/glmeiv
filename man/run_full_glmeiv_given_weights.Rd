@@ -14,7 +14,7 @@ run_full_glmeiv_given_weights(
   m_offset,
   g_offset,
   prev_log_lik = -Inf,
-  ep_tol = 1e-05,
+  ep_tol = 1e-04,
   max_it = 15
 )
 }

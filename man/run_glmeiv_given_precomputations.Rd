@@ -15,7 +15,8 @@ run_glmeiv_given_precomputations(
   n_em_rep,
   pi_guess_range,
   m_perturbation_guess_range,
-  g_perturbation_guess_range
+  g_perturbation_guess_range,
+  ep_tol = 1e-04
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ run_glmeiv_given_precomputations(
 \item{m_perturbation_guess_range}{range of values over which to sample m_perturbation}
 
 \item{g_perturbation_guess_range}{range of values over which to sample g_perturbation}
+
+\item{ep_tol}{(optional) EM convergence threshold}
 
 \item{fam_str}{string describing family; currently "poisson" or "Negative Binomial" supported}
 }

@@ -7,7 +7,6 @@
 create_simulatr_specifier_object(
   param_grid,
   fixed_params,
-  one_rep_times,
   methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")
 )
 }
@@ -16,12 +15,12 @@ create_simulatr_specifier_object(
 
 \item{fixed_params}{list of fixed parameters}
 
-\item{one_rep_times}{vector of times for each method, as well as the data generation procedure}
-
 \item{methods}{a character vector giving the methods to run}
+
+\item{one_rep_times}{vector of times for each method, as well as the data generation procedure}
 }
 \value{
-
+a simulatr specifier object for use in simulatr
 }
 \description{
 Create simulatr specifier object (v2)

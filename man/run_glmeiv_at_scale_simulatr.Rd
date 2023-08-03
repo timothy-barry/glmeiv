@@ -17,7 +17,8 @@ run_glmeiv_at_scale_simulatr(
   pi_guess_range = c(1e-05, 0.03),
   m_perturbation_guess_range = log(c(0.1, 1.5)),
   g_perturbation_guess_range = log(c(0.5, 10)),
-  exponentiate_coefs = FALSE
+  exponentiate_coefs = FALSE,
+  ep_tol = 1e-04
 )
 }
 \arguments{
@@ -46,6 +47,8 @@ run_glmeiv_at_scale_simulatr(
 \item{g_perturbation_guess_range}{range of values over which to sample g_perturbation}
 
 \item{exponentiate_coefs}{(boolean) should the fitted coeficients (and associated standard errors) be exponentiated?}
+
+\item{ep_tol}{(optional) EM convergence threshold}
 
 \item{fam_str}{string (currently either "poisson" or "Negative Binomial") giving family object}
 }

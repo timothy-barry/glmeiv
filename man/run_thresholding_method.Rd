@@ -11,7 +11,8 @@ run_thresholding_method(
   m_offset,
   covariate_matrix,
   n_examples_per_param = 5,
-  alpha = 0.95
+  alpha = 0.95,
+  exponentiate_coefs = TRUE
 )
 }
 \arguments{

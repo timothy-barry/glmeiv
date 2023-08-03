@@ -125,13 +125,18 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
   m <- dat$m
   g <- dat$g
   # if precomp already complete...
-  if ("m_precomp" %in% names(attributes(dat)) && "g_precomp" %in% names(attributes(dat))) {
+  if ("m_precomp" %in% names(attributes(dat))) {
     m_precomp <- attr(dat, "m_precomp")
-    g_precomp <- attr(dat, "g_precomp")
-  } else { # run the precomputations
+  } else {
     m_precomp <- run_glmeiv_precomputation(y = m, covariate_matrix = covariate_matrix, offset = m_offset, fam = m_fam)
+  }
+
+  if ("g_precomp" %in% names(attributes(dat))) {
+    g_precomp <- attr(dat, "g_precomp")
+  } else {
     g_precomp <- run_glmeiv_precomputation(y = g, covariate_matrix = covariate_matrix, offset = g_offset, fam = g_fam)
   }
+
   # run glmeiv given precomputations, timing it.
   time <- system.time({
     fit <- run_glmeiv_given_precomputations(m = m, g = g, m_precomp = m_precomp, g_precomp = g_precomp,
@@ -198,10 +203,13 @@ run_glmeiv_random_init_simulatr <- function(dat, m_fam, g_fam, covariate_matrix,
     g_covariate_coefs_guess_range <- m_covariate_coefs_guess_range <- NULL
   }
   # set the family objects; if available as attribute of dat, use that; else, use the m_fam and g_fam passed as arguments
-  if ("m_precomp" %in% names(attributes(dat)) && "g_precomp" %in% names(attributes(dat))) {
+  if ("m_precomp" %in% names(attributes(dat))) {
     m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam
+  }
+  if ("g_precomp" %in% names(attributes(dat))) {
     g_precomp <- attr(dat, "g_precomp"); g_fam <- g_precomp$fam
   }
+
   best_fit <- NULL
   best_log_lik <- -Inf
   n_covariates <- ncol(covariate_matrix)

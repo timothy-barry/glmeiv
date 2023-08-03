@@ -24,9 +24,9 @@
 #' \dontrun{
 #' library(magrittr)
 #' m_fam <- g_fam <- poisson() %>% augment_family_object()
-#' m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
-#' pi <- 0.2; n <- 1000; B <- 500
-#' m_offset <- g_offset <- NULL
+#' pi <- 0.2; n <- 1000; B <- 5
+#' m_intercept <- log(0.01); m_perturbation <- log(0.25); g_intercept <- log(0.005); g_perturbation <- log(2.5)
+#' m_offset <- log(rpois(n = n, lambda = 10000)); g_offset <- log(rpois(n = n, lambda = 5000))
 #' # no covariates
 #' m_covariate_coefs <- g_covariate_coefs <- covariate_matrix <- NULL
 #' dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,
@@ -41,7 +41,7 @@
 #' }
 generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_intercept, g_perturbation, pi, n,
                                B, covariate_matrix, m_covariate_coefs, g_covariate_coefs, m_offset, g_offset,
-                               run_unknown_theta_precomputation = FALSE) {
+                               run_mrna_unknown_theta_precomputation = FALSE, run_grna_unknown_theta_precomputation = FALSE) {
   # if m_fam/g_fam in list form, extract
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
@@ -57,20 +57,29 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
     attr(df, "i") <- i
     return(df)
   }, simplify = FALSE)
-  if (run_unknown_theta_precomputation) {
+
+  if (run_mrna_unknown_theta_precomputation) {
+    if (m_fam$fam_str != "Negative Binomial") stop("Cannot run precomputation on mrna modality, as family is not NB.")
     for (i in seq(1L, B)) {
-      fam <- MASS::negative.binomial(NA) %>% augment_family_object()
+      fam <- MASS::negative.binomial(NA) |> augment_family_object()
       m_precomp <- run_glmeiv_precomputation(y = data_list[[i]]$m,
                                              covariate_matrix = covariate_matrix,
                                              offset = m_offset,
                                              fam = fam)
-      g_precomp <- run_glmeiv_precomputation(y = data_list[[i]]$g,
-                                             covariate_matrix = covariate_matrix,
-                                             offset = g_offset,
-                                             fam = fam)
-      attr(data_list[[i]], "m_precomp") <- m_precomp; attr(data_list[[i]], "g_precomp") <- g_precomp
+      attr(data_list[[i]], "m_precomp") <- m_precomp
     }
   }
+
+  if (run_grna_unknown_theta_precomputation) {
+    if (g_fam$fam_str != "Negative Binomial") stop("Cannot run precomputaton on gnra modality, as family is not NB.")
+    fam <- MASS::negative.binomial(NA) |> augment_family_object()
+    g_precomp <- run_glmeiv_precomputation(y = data_list[[i]]$g,
+                                           covariate_matrix = covariate_matrix,
+                                           offset = g_offset,
+                                           fam = fam)
+    attr(data_list[[i]], "g_precomp") <- g_precomp
+  }
+
   return(data_list)
 }
 
@@ -121,7 +130,7 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
 #' @param one_rep_times vector of times for each method, as well as the data generation procedure
 #' @param methods a character vector giving the methods to run
 #'
-#' @return
+#' @return a simulatr specifier object for use in simulatr
 #' @export
 create_simulatr_specifier_object <- function(param_grid, fixed_params, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
   methods <- sort(methods)

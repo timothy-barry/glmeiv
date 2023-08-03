@@ -63,9 +63,9 @@ Generates B copies of a full GLM-EIV dataset.
 \dontrun{
 library(magrittr)
 m_fam <- g_fam <- poisson() \%>\% augment_family_object()
-m_intercept <- 2; m_perturbation <- -1; g_intercept <- -2; g_perturbation <- 1
-pi <- 0.2; n <- 1000; B <- 500
-m_offset <- g_offset <- NULL
+pi <- 0.2; n <- 1000; B <- 5
+m_intercept <- log(0.01); m_perturbation <- log(0.25); g_intercept <- log(0.005); g_perturbation <- log(2.5)
+m_offset <- log(rpois(n = n, lambda = 10000)); g_offset <- log(rpois(n = n, lambda = 5000))
 # no covariates
 m_covariate_coefs <- g_covariate_coefs <- covariate_matrix <- NULL
 dat_list <- generate_full_data(m_fam, m_intercept, m_perturbation, g_fam,
