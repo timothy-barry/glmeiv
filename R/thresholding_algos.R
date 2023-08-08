@@ -57,13 +57,19 @@ run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g
   }
   m <- dat$m
   g <- dat$g
-  n <- length(m)
+  # get the Bayes-optimal threshold
+  bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
+  # threshold the counts
+  phat <- as.integer(g > bdy)
   # run method with timing
+  out <- thresholding_method_simulatr_helper(phat, m, pi, covariate_matrix, m_fam, m_offset, alpha)
+  return(out)
+}
+
+
+thresholding_method_simulatr_helper <- function(phat, m, pi, covariate_matrix, m_fam, m_offset, alpha) {
+  n <- length(m)
   time <- system.time({
-    # get the Bayes-optimal threshold
-    bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs, g_offset)
-    # threshold the counts
-    phat <- as.integer(g > bdy)
     # check if OK
     s_phat <- sum(phat)
     lower_try_thresh <- (n * pi)/20
@@ -97,9 +103,7 @@ run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g
   })[["elapsed"]]
   # append the run time to out
   out <- out %>% dplyr::add_row(.,parameter = "meta", target = "time", value = time)
-  return(out)
 }
-
 
 #' Run thresholding method
 #'
