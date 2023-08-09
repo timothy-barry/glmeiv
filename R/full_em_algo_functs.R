@@ -15,10 +15,10 @@
 #' @param fit_pi fitted (or hypothesized) value for pi
 #'
 #' @return a list containing (i) the membership probabilities (Ti1s), (ii) the model log-likelihood, and (iii) the new value of pi (computed ahead of the subsequent M step for convenience).
-run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi) {
+run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi, use_mrna_modality = TRUE) {
   # first, compute log-likelihood
-  p0 <- exp(log(1 - fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert0) + g_fam$log_py_given_mu(g, g_mus_pert0))
-  p1 <- exp(log(fit_pi) + m_fam$log_py_given_mu(m, m_mus_pert1) + g_fam$log_py_given_mu(g, g_mus_pert1))
+  p0 <- exp(log(1 - fit_pi) + g_fam$log_py_given_mu(g, g_mus_pert0) + (if (use_mrna_modality) m_fam$log_py_given_mu(m, m_mus_pert0) else 0) )
+  p1 <- exp(log(fit_pi) + g_fam$log_py_given_mu(g, g_mus_pert1) + (if (use_mrna_modality) m_fam$log_py_given_mu(m, m_mus_pert1) else 0) )
 
   s <- p0 + p1
   if (0 %in% s) {
@@ -28,7 +28,7 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
   log_lik <- sum(log(s))
 
   # second, compute membership probabilities
-  quotient <- log(1 - fit_pi) - log(fit_pi) + m_fam$d_log_py(m, m_mus_pert0, m_mus_pert1) + g_fam$d_log_py(g, g_mus_pert0, g_mus_pert1)
+  quotient <- log(1 - fit_pi) - log(fit_pi) + g_fam$d_log_py(g, g_mus_pert0, g_mus_pert1) + (if (use_mrna_modality) m_fam$d_log_py(m, m_mus_pert0, m_mus_pert1) else 0)
   Ti1s <- 1/(exp(quotient) + 1)
   # estimate new_pi and ensure new_pi is less than 0.5
   new_pi <- sum(Ti1s)/length(Ti1s)
@@ -83,16 +83,12 @@ run_e_step <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0
 #' initial_Ti1s <- runif(n)
 #' fit <- run_full_glmeiv_given_weights(m, g, m_fam, g_fam, covariate_matrix,
 #' initial_Ti1s, m_offset, g_offset)
-run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-4, max_it = 15) {
-  # augment family objects, if necessary
-  if (is.null(m_fam$augmented)) m_fam <- augment_family_object(m_fam)
-  if (is.null(g_fam$augmented)) g_fam <- augment_family_object(g_fam)
-
+run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, initial_Ti1s, m_offset, g_offset, prev_log_lik = -Inf, ep_tol = 1e-4, max_it = 15, use_mrna_modality = TRUE) {
   # verify column names ok
   check_col_names(covariate_matrix)
 
   # define some basic quantities
-  n <- length(m)
+  n <- length(g)
   iteration <- 1L
   converged <- FALSE
   curr_Ti1s <- initial_Ti1s
@@ -102,14 +98,23 @@ run_full_glmeiv_given_weights <- function(m, g, m_fam, g_fam, covariate_matrix, 
   # iterate through M and E steps (in that order) until convergence
   while (!converged) {
     # M step
-    m_step <- run_m_step_full(curr_Ti1s, augmented_inputs$m_augmented, m_fam,
-                              augmented_inputs$m_offset_augmented,
-                              augmented_inputs$g_augmented, g_fam,
-                              augmented_inputs$g_offset_augmented,
-                              augmented_inputs$Xtilde_augmented, n)
+    m_step <- run_m_step_full(curr_Ti1s = curr_Ti1s,
+                              m_augmented = augmented_inputs$m_augmented,
+                              m_fam = m_fam,
+                              m_offset_augmented = augmented_inputs$m_offset_augmented,
+                              g_augmented = augmented_inputs$g_augmented,
+                              g_fam = g_fam,
+                              g_offset_augmented = augmented_inputs$g_offset_augmented,
+                              Xtilde_augmented = augmented_inputs$Xtilde_augmented, n = n,
+                              use_mrna_modality = use_mrna_modality)
     # E step
-    e_step <- run_e_step(m_fam, g_fam, m, g, m_step$m_mus_pert0, m_step$m_mus_pert1,
-                         m_step$g_mus_pert0, m_step$g_mus_pert1, m_step$fit_pi)
+    e_step <- run_e_step(m_fam = m_fam, g_fam = g_fam, m = m, g = g,
+                         m_mus_pert0 = m_step$m_mus_pert0,
+                         m_mus_pert1 = m_step$m_mus_pert1,
+                         g_mus_pert0 = m_step$g_mus_pert0,
+                         g_mus_pert1 = m_step$g_mus_pert1,
+                         fit_pi = m_step$fit_pi,
+                         use_mrna_modality = use_mrna_modality)
     # append current log-likelihood, check for convergence
     curr_Ti1s <- e_step$Ti1s
     curr_log_lik <- e_step$log_lik
@@ -151,17 +156,23 @@ augment_inputs <- function(covariate_matrix, m, g, m_offset, g_offset, n) {
 }
 
 
-run_m_step_full <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n) {
+run_m_step_full <- function(curr_Ti1s, m_augmented, m_fam, m_offset_augmented, g_augmented, g_fam, g_offset_augmented, Xtilde_augmented, n, use_mrna_modality = TRUE) {
   fit_pi <- sum(curr_Ti1s)/n
   # fit models for m and g using weights
   weights <- c(1 - curr_Ti1s, curr_Ti1s)
-  fit_m <- stats::glm(formula = stats::formula("m_augmented ~ ."), data = Xtilde_augmented,
-                      family = m_fam, weights = weights, offset = m_offset_augmented)
+
+  if (use_mrna_modality) {
+    fit_m <- stats::glm(formula = stats::formula("m_augmented ~ ."), data = Xtilde_augmented,
+                        family = m_fam, weights = weights, offset = m_offset_augmented)
+    fitted_means_m <- extract_glm_fitted_means(fit_m, m_fam, n)
+  } else {
+    fit_m <- fitted_means_m <- NULL
+  }
+
   fit_g <- stats::glm(formula = stats::formula("g_augmented ~ ."), data = Xtilde_augmented,
                       family = g_fam, weights = weights, offset = g_offset_augmented)
-  # extract fitted means
-  fitted_means_m <- extract_glm_fitted_means(fit_m, m_fam, n)
   fitted_means_g <- extract_glm_fitted_means(fit_g, g_fam, n)
+
   # return list fitted means, as well as the fitted GLM objects themselves
   out <- list(fit_m = fit_m, fit_g = fit_g, fit_pi = fit_pi,
               m_mus_pert0 = fitted_means_m$mus_pert0, m_mus_pert1 = fitted_means_m$mus_pert1,
@@ -190,14 +201,15 @@ compute_tolerance <- function(curr_log_lik, prev_log_lik) {
 }
 
 
-run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi, covariate_matrix, m_offset, g_offset, ep_tol = 1e-4, max_it = 75) {
+run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, m_mus_pert1, g_mus_pert0, g_mus_pert1, fit_pi, covariate_matrix, m_offset, g_offset, ep_tol = 1e-4, max_it = 75, use_mrna_modality = TRUE) {
   e_step <- run_e_step(m_fam = m_fam, g_fam = g_fam, m = m, g = g,
                        m_mus_pert0 = m_mus_pert0, m_mus_pert1 = m_mus_pert1,
-                       g_mus_pert0 = g_mus_pert0, g_mus_pert1 = g_mus_pert1, fit_pi = fit_pi)
+                       g_mus_pert0 = g_mus_pert0, g_mus_pert1 = g_mus_pert1,
+                       fit_pi = fit_pi, use_mrna_modality = use_mrna_modality)
   out <- run_full_glmeiv_given_weights(m = m, g = g, m_fam = m_fam, g_fam = g_fam,
-                                covariate_matrix = covariate_matrix, initial_Ti1s = e_step$Ti1s,
-                                m_offset = m_offset, g_offset = g_offset, prev_log_lik = e_step$log_lik,
-                                ep_tol = ep_tol, max_it = max_it)
+                                       covariate_matrix = covariate_matrix, initial_Ti1s = e_step$Ti1s,
+                                       m_offset = m_offset, g_offset = g_offset, prev_log_lik = e_step$log_lik,
+                                       ep_tol = ep_tol, max_it = max_it, use_mrna_modality = use_mrna_modality)
   return(out)
 }
 
@@ -241,28 +253,34 @@ run_full_glmeiv_given_fitted_means <- function(m_fam, g_fam, m, g, m_mus_pert0, 
 #' m_covariate_coefs_guess = log(1.4), g_intercept_guess = log(0.05),
 #' g_perturbation_guess = log(1.4), g_covariate_coefs_guess = log(1.2),
 #' covariate_matrix = covariate_matrix, m_offset = m_offsets, g_offset = g_offsets)
-run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset, ep_tol = 1e-5, max_it = 75) {
+run_full_glmeiv_given_pilot_params <- function(m, g, m_fam, g_fam, pi_guess, m_intercept_guess, m_perturbation_guess, m_covariate_coefs_guess, g_intercept_guess, g_perturbation_guess, g_covariate_coefs_guess, covariate_matrix, m_offset, g_offset, ep_tol = 1e-5, max_it = 75, use_mrna_modality = TRUE) {
   # compute the conditional means
-  m_conditional_means <- compute_theoretical_conditional_means(intercept = m_intercept_guess,
-                                                               perturbation_coef = m_perturbation_guess,
-                                                               fam = m_fam,
-                                                               covariate_matrix = covariate_matrix,
-                                                               covariate_coefs = m_covariate_coefs_guess,
-                                                               offset = m_offset)
+  if (use_mrna_modality) {
+    m_conditional_means <- compute_theoretical_conditional_means(intercept = m_intercept_guess,
+                                                                 perturbation_coef = m_perturbation_guess,
+                                                                 fam = m_fam,
+                                                                 covariate_matrix = covariate_matrix,
+                                                                 covariate_coefs = m_covariate_coefs_guess,
+                                                                 offset = m_offset)
+    m_mus_pert0 <- m_conditional_means$mu0; m_mus_pert1 <- m_conditional_means$mu1
+  } else {
+    m_mus_pert0 <- m_mus_pert1 <- NULL
+  }
+
   g_conditional_means <- compute_theoretical_conditional_means(intercept = g_intercept_guess,
                                                                perturbation_coef = g_perturbation_guess,
                                                                fam = g_fam,
                                                                covariate_matrix = covariate_matrix,
                                                                covariate_coefs = g_covariate_coefs_guess,
                                                                offset = g_offset)
-  # assign to variables for convenience
-  m_mus_pert0 <- m_conditional_means$mu0; m_mus_pert1 <- m_conditional_means$mu1
   g_mus_pert0 <- g_conditional_means$mu0; g_mus_pert1 <- g_conditional_means$mu1
+
   # run glmeiv given fitted means
   out <- run_full_glmeiv_given_fitted_means(m_fam = m_fam, g_fam = g_fam, m = m, g = g,
                                             m_mus_pert0 = m_mus_pert0, m_mus_pert1 = m_mus_pert1,
                                             g_mus_pert0 = g_mus_pert0, g_mus_pert1 = g_mus_pert1,
                                             fit_pi = pi_guess, covariate_matrix = covariate_matrix,
-                                            m_offset = m_offset, g_offset = g_offset, ep_tol = ep_tol, max_it = max_it)
+                                            m_offset = m_offset, g_offset = g_offset, ep_tol = ep_tol,
+                                            max_it = max_it, use_mrna_modality = use_mrna_modality)
   return(out)
 }

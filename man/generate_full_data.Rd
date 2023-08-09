@@ -19,7 +19,8 @@ generate_full_data(
   g_covariate_coefs,
   m_offset,
   g_offset,
-  run_unknown_theta_precomputation = FALSE
+  run_mrna_unknown_theta_precomputation = FALSE,
+  run_grna_unknown_theta_precomputation = FALSE
 )
 }
 \arguments{

@@ -45,7 +45,7 @@ get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covari
 #' @inheritParams run_full_glmeiv_given_weights
 #' @return coefficient table
 #' @export
-run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha) {
+run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha = 0.95) {
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
   # pull g_fam and m_fam from dat, if available
@@ -62,47 +62,47 @@ run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g
   # threshold the counts
   phat <- as.integer(g > bdy)
   # run method with timing
+  time <- system.time({
   out <- thresholding_method_simulatr_helper(phat, m, pi, covariate_matrix, m_fam, m_offset, alpha)
+  })[["elapsed"]]
+  out <- out %>% dplyr::add_row(.,parameter = "meta", target = "time", value = time)
   return(out)
 }
 
 
 thresholding_method_simulatr_helper <- function(phat, m, pi, covariate_matrix, m_fam, m_offset, alpha) {
   n <- length(m)
-  time <- system.time({
-    # check if OK
-    s_phat <- sum(phat)
-    lower_try_thresh <- (n * pi)/20
-    upper_try_thresh <- n - (n * pi)/20
-    if (s_phat <= lower_try_thresh || s_phat >= upper_try_thresh) { # too unbalanced; do not attempt fit
-      out <- data.frame(parameter = "meta",
-                        target = c("fit_attempted", "sum_phat"),
-                        value = c(0, s_phat))
-    } else {
-      # obtain the data matrix
-      data_mat <- data.frame(m = m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
-      # fit the model
-      fit <- stats::glm(formula = m ~ ., data = data_mat, family = m_fam, offset = m_offset)
-      # get the summary
-      s <- summary(fit)$coefficients
-      row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
-      mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
-      confint_lower <- s[,"Estimate"] - mult_factor * s[,"Std. Error"]
-      confint_upper <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
-      names(confint_lower) <- names(confint_upper) <- NULL
-      out <- data.frame(parameter = paste0("m_", row.names(s)),
-                        estimate = s[,"Estimate"],
-                        std_error = s[,"Std. Error"],
-                        p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],
-                        confint_lower = confint_lower,
-                        confint_upper= confint_upper) %>%
-        tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
-        dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%
-        dplyr::add_row(parameter = "meta", target = "sum_phat", value = s_phat)
-    }
-  })[["elapsed"]]
-  # append the run time to out
-  out <- out %>% dplyr::add_row(.,parameter = "meta", target = "time", value = time)
+  # check if OK
+  s_phat <- sum(phat)
+  lower_try_thresh <- (n * pi)/20
+  upper_try_thresh <- n - (n * pi)/20
+  if (s_phat <= lower_try_thresh || s_phat >= upper_try_thresh) { # too unbalanced; do not attempt fit
+    out <- data.frame(parameter = "meta",
+                      target = c("fit_attempted", "sum_phat"),
+                      value = c(0, s_phat))
+  } else {
+    # obtain the data matrix
+    data_mat <- data.frame(m = m, perturbation = phat) %>% dplyr::mutate(covariate_matrix)
+    # fit the model
+    fit <- stats::glm(formula = m ~ ., data = data_mat, family = m_fam, offset = m_offset)
+    # get the summary
+    s <- summary(fit)$coefficients
+    row.names(s)[row.names(s) == "(Intercept)"] <- "intercept"
+    mult_factor <- stats::qnorm(1 - (1 - alpha)/2)
+    confint_lower <- s[,"Estimate"] - mult_factor * s[,"Std. Error"]
+    confint_upper <- s[,"Estimate"] + mult_factor * s[,"Std. Error"]
+    names(confint_lower) <- names(confint_upper) <- NULL
+    out <- data.frame(parameter = paste0("m_", row.names(s)),
+                      estimate = s[,"Estimate"],
+                      std_error = s[,"Std. Error"],
+                      p_value = if (m_fam$family == "poisson") s[,"Pr(>|z|)"] else s[,"Pr(>|t|)"],
+                      confint_lower = confint_lower,
+                      confint_upper= confint_upper) %>%
+      tidyr::pivot_longer(cols = -parameter, names_to = "target") %>%
+      dplyr::add_row(parameter = "meta", target = "fit_attempted", value = 1) %>%
+      dplyr::add_row(parameter = "meta", target = "sum_phat", value = s_phat)
+  }
+  return(out)
 }
 
 #' Run thresholding method

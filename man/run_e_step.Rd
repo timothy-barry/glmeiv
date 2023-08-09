@@ -13,7 +13,8 @@ run_e_step(
   m_mus_pert1,
   g_mus_pert0,
   g_mus_pert1,
-  fit_pi
+  fit_pi,
+  use_mrna_modality = TRUE
 )
 }
 \arguments{

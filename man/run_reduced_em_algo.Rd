@@ -16,7 +16,8 @@ run_reduced_em_algo(
   g_fam,
   ep_tol = 0.5 * 1e-04,
   max_it = 50,
-  min_it = 3
+  min_it = 3,
+  use_mrna_modality = TRUE
 )
 }
 \arguments{

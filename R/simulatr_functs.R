@@ -132,7 +132,7 @@ generate_glm_data_sim <- function(intercept, perturbation_coef, perturbation_ind
 #'
 #' @return a simulatr specifier object for use in simulatr
 #' @export
-create_simulatr_specifier_object <- function(param_grid, fixed_params, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")) {
+create_simulatr_specifier_object <- function(param_grid, fixed_params, methods = c("glmeiv_slow", "glmeiv_fast", "thresholding", "unimodal_mixture")) {
   methods <- sort(methods)
   ####################################
   # 0. Define the evaluation functions
@@ -229,7 +229,10 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, methods =
                                                                 loop = TRUE),
     if ("thresholding" %in% methods) simulatr::simulatr_function(f = run_thresholding_method_simulatr,
                                                                  arg_names = formalArgs(run_thresholding_method_simulatr)[-1],
-                                                                 packages = "glmeiv", loop = TRUE)
+                                                                 packages = "glmeiv", loop = TRUE),
+    if ("unimodal_mixture" %in% methods) simulatr::simulatr_function(f = run_umimodal_mixture_method_simulatr,
+                                                                     arg_names = formalArgs(run_thresholding_method_simulatr)[-1],
+                                                                     packages = "glmeiv", loop = TRUE)
     )
   names(method_list) <- methods
 

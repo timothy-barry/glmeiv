@@ -7,7 +7,7 @@
 create_simulatr_specifier_object(
   param_grid,
   fixed_params,
-  methods = c("glmeiv_slow", "glmeiv_fast", "thresholding")
+  methods = c("glmeiv_slow", "glmeiv_fast", "thresholding", "unimodal_mixture")
 )
 }
 \arguments{

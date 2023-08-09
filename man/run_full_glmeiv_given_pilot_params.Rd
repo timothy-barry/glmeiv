@@ -20,7 +20,8 @@ run_full_glmeiv_given_pilot_params(
   m_offset,
   g_offset,
   ep_tol = 1e-05,
-  max_it = 75
+  max_it = 75,
+  use_mrna_modality = TRUE
 )
 }
 \arguments{

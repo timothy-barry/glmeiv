@@ -15,7 +15,8 @@ run_full_glmeiv_given_weights(
   g_offset,
   prev_log_lik = -Inf,
   ep_tol = 1e-04,
-  max_it = 15
+  max_it = 15,
+  use_mrna_modality = TRUE
 )
 }
 \arguments{
