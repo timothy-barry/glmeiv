@@ -24,6 +24,8 @@ run_umimodal_mixture_method_simulatr <- function(dat, g_intercept, g_perturbatio
   set.seed(4)
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
+  m <- dat$m
+  g <- dat$g
   # pull g_fam and m_fam from dat, if available
   if ("m_precomp" %in% names(attributes(dat))) {
     m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam
