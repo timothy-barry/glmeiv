@@ -41,7 +41,8 @@
 #' }
 generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_intercept, g_perturbation, pi, n,
                                B, covariate_matrix, m_covariate_coefs, g_covariate_coefs, m_offset, g_offset,
-                               run_mrna_unknown_theta_precomputation = FALSE, run_grna_unknown_theta_precomputation = FALSE) {
+                               run_mrna_unknown_theta_precomputation = FALSE, run_grna_unknown_theta_precomputation = FALSE,
+                               rm_covariate = "") {
   # if m_fam/g_fam in list form, extract
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
@@ -57,6 +58,10 @@ generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_inte
     attr(df, "i") <- i
     return(df)
   }, simplify = FALSE)
+
+  if (rm_covariate != "") {
+    covariate_matrix <- covariate_matrix |> dplyr::select(-dplyr::all_of(rm_covariate))
+  }
 
   if (run_mrna_unknown_theta_precomputation) {
     if (m_fam$fam_str != "Negative Binomial") stop("Cannot run precomputation on mrna modality, as family is not NB.")
@@ -231,7 +236,7 @@ create_simulatr_specifier_object <- function(param_grid, fixed_params, methods =
                                                                  arg_names = formalArgs(run_thresholding_method_simulatr)[-1],
                                                                  packages = "glmeiv", loop = TRUE),
     if ("unimodal_mixture" %in% methods) simulatr::simulatr_function(f = run_umimodal_mixture_method_simulatr,
-                                                                     arg_names = formalArgs(run_thresholding_method_simulatr)[-1],
+                                                                     arg_names = formalArgs(run_umimodal_mixture_method_simulatr)[-1],
                                                                      packages = "glmeiv", loop = TRUE)
     )
   names(method_list) <- methods

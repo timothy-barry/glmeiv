@@ -97,7 +97,7 @@ run_glmeiv_precomputation <- function(y, covariate_matrix, offset, fam) {
 #'
 #' @examples
 #' m_fam <- g_fam <- augment_family_object(poisson())
-#' n <- 200000
+#' n <- 50000
 #' lib_size <- rpois(n = n, lambda = 5000)
 #' m_offset <- g_offset <- log(lib_size)
 #' pi <- 0.01
@@ -117,13 +117,20 @@ run_glmeiv_precomputation <- function(y, covariate_matrix, offset, fam) {
 #' # ability to recover ground truth given p
 #' fit <- run_glmeiv_at_scale_simulatr(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
 #' fit <- run_glmeiv_random_init_simulatr(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset)
-run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03), m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)), exponentiate_coefs = FALSE, ep_tol = 1e-4) {
+run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_offset, g_offset, alpha = 0.95,
+                                         n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03),
+                                         m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)),
+                                         exponentiate_coefs = FALSE, ep_tol = 1e-4, rm_covariate = "") {
   # if m_fam/g_fam is list, extract
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
   # extract counts
   m <- dat$m
   g <- dat$g
+  # remove one of the covariates if applicable
+  if (rm_covariate != "") {
+    covariate_matrix <- covariate_matrix |> dplyr::select(-dplyr::all_of(rm_covariate))
+  }
   # if precomp already complete...
   if ("m_precomp" %in% names(attributes(dat))) {
     m_precomp <- attr(dat, "m_precomp")

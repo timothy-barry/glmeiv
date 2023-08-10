@@ -18,7 +18,8 @@ run_glmeiv_at_scale_simulatr(
   m_perturbation_guess_range = log(c(0.1, 1.5)),
   g_perturbation_guess_range = log(c(0.5, 10)),
   exponentiate_coefs = FALSE,
-  ep_tol = 1e-04
+  ep_tol = 1e-04,
+  rm_covariate = ""
 )
 }
 \arguments{
@@ -60,7 +61,7 @@ Run GLM-EIV at scale simulatr
 }
 \examples{
 m_fam <- g_fam <- augment_family_object(poisson())
-n <- 200000
+n <- 50000
 lib_size <- rpois(n = n, lambda = 5000)
 m_offset <- g_offset <- log(lib_size)
 pi <- 0.01

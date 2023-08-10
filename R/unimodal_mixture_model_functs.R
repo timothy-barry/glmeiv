@@ -1,5 +1,4 @@
 #' Run unimodal mixture method in simulatr
-#' @export
 #' @examples
 #' m_fam <- g_fam <- augment_family_object(poisson())
 #' n <- 50000
@@ -20,12 +19,16 @@
 #' g_covariate_coefs = g_covariate_coefs, m_offset = m_offset, g_offset = g_offset)[[1]]
 #' m <- dat$m; g <- dat$g; p <- dat$p
 #' fit <- run_umimodal_mixture_method_simulatr(dat, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset)
-run_umimodal_mixture_method_simulatr <- function(dat, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, pi_guess_range = c(1e-5, 0.03), g_perturbation_guess_range = log(c(0.5, 10))) {
+#' @export
+run_umimodal_mixture_method_simulatr <- function(dat, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha = 0.95, n_em_rep = 15, pi_guess_range = c(1e-5, 0.03), g_perturbation_guess_range = log(c(0.5, 10)), rm_covariate = "") {
   set.seed(4)
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
   m <- dat$m
   g <- dat$g
+  if (rm_covariate != "") {
+    covariate_matrix <- covariate_matrix |> dplyr::select(-dplyr::all_of(rm_covariate))
+  }
   # pull g_fam and m_fam from dat, if available
   if ("m_precomp" %in% names(attributes(dat))) {
     m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam

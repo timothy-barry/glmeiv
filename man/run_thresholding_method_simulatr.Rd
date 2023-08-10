@@ -15,7 +15,7 @@ run_thresholding_method_simulatr(
   g_covariate_coefs,
   m_offset,
   g_offset,
-  alpha
+  alpha = 0.95
 )
 }
 \arguments{
