@@ -121,40 +121,46 @@ run_glmeiv_at_scale_simulatr <- function(dat, m_fam, g_fam, covariate_matrix, m_
                                          n_em_rep = 15, save_membership_probs_mult = 250, pi_guess_range = c(1e-5, 0.03),
                                          m_perturbation_guess_range = log(c(0.1, 1.5)), g_perturbation_guess_range = log(c(0.5, 10)),
                                          exponentiate_coefs = FALSE, ep_tol = 1e-4, rm_covariate = "") {
-  # if m_fam/g_fam is list, extract
-  if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
-  if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
-  # extract counts
-  m <- dat$m
-  g <- dat$g
-  # remove one of the covariates if applicable
-  if (rm_covariate != "") {
-    covariate_matrix <- covariate_matrix |> dplyr::select(-dplyr::all_of(rm_covariate))
-  }
-  # if precomp already complete...
-  if ("m_precomp" %in% names(attributes(dat))) {
-    m_precomp <- attr(dat, "m_precomp")
-  } else {
-    m_precomp <- run_glmeiv_precomputation(y = m, covariate_matrix = covariate_matrix, offset = m_offset, fam = m_fam)
-  }
+  out <- tryCatch({
+    # if m_fam/g_fam is list, extract
+    if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
+    if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
+    # extract counts
+    m <- dat$m
+    g <- dat$g
+    # remove one of the covariates if applicable
+    if (rm_covariate != "") {
+      covariate_matrix <- covariate_matrix |> dplyr::select(-dplyr::all_of(rm_covariate))
+    }
+    # if precomp already complete...
+    if ("m_precomp" %in% names(attributes(dat))) {
+      m_precomp <- attr(dat, "m_precomp")
+    } else {
+      m_precomp <- run_glmeiv_precomputation(y = m, covariate_matrix = covariate_matrix, offset = m_offset, fam = m_fam)
+    }
 
-  if ("g_precomp" %in% names(attributes(dat))) {
-    g_precomp <- attr(dat, "g_precomp")
-  } else {
-    g_precomp <- run_glmeiv_precomputation(y = g, covariate_matrix = covariate_matrix, offset = g_offset, fam = g_fam)
-  }
+    if ("g_precomp" %in% names(attributes(dat))) {
+      g_precomp <- attr(dat, "g_precomp")
+    } else {
+      g_precomp <- run_glmeiv_precomputation(y = g, covariate_matrix = covariate_matrix, offset = g_offset, fam = g_fam)
+    }
 
-  # run glmeiv given precomputations, timing it.
-  time <- system.time({
-    fit <- run_glmeiv_given_precomputations(m = m, g = g, m_precomp = m_precomp, g_precomp = g_precomp,
-                                            covariate_matrix = covariate_matrix, m_offset = m_offset,
-                                            g_offset = g_offset, n_em_rep = n_em_rep, pi_guess_range = pi_guess_range,
-                                            m_perturbation_guess_range = m_perturbation_guess_range,
-                                            g_perturbation_guess_range = g_perturbation_guess_range, ep_tol = ep_tol)
-    s <- run_inference_on_em_fit(fit, alpha)
+    # run glmeiv given precomputations, timing it.
+    time <- system.time({
+      fit <- run_glmeiv_given_precomputations(m = m, g = g, m_precomp = m_precomp, g_precomp = g_precomp,
+                                              covariate_matrix = covariate_matrix, m_offset = m_offset,
+                                              g_offset = g_offset, n_em_rep = n_em_rep, pi_guess_range = pi_guess_range,
+                                              m_perturbation_guess_range = m_perturbation_guess_range,
+                                              g_perturbation_guess_range = g_perturbation_guess_range, ep_tol = ep_tol)
+      s <- run_inference_on_em_fit(fit, alpha)
     })[["elapsed"]]
-  # do post-processing (by a call to a function), then return result.
-  out <- wrangle_glmeiv_result(s, time, fit, exponentiate_coefs, save_membership_probs_mult, if (!is.null(attr(dat, "i"))) attr(dat, "i") else 1)
+    # do post-processing (by a call to a function), then return result.
+    out <- wrangle_glmeiv_result(s, time, fit, exponentiate_coefs, save_membership_probs_mult, if (!is.null(attr(dat, "i"))) attr(dat, "i") else 1)
+    out
+  }, error = function(e) {
+    out <- tibble::tibble(parameter = "meta", target = c("converged"), value = 0)
+    out
+  })
   return(out)
 }
 

@@ -46,31 +46,36 @@ get_optimal_threshold <- function(g_intercept, g_perturbation, g_fam, pi, covari
 #' @return coefficient table
 #' @export
 run_thresholding_method_simulatr <- function(dat, g_intercept, g_perturbation, g_fam, m_fam, pi, covariate_matrix, g_covariate_coefs, m_offset, g_offset, alpha = 0.95, rm_covariate = "") {
-  if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
-  if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
-  # pull g_fam and m_fam from dat, if available
-  if ("m_precomp" %in% names(attributes(dat))) {
-    m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam
-  }
-  if ("g_precomp" %in% names(attributes(dat))) {
-    g_precomp <- attr(dat, "g_precomp"); g_fam <- g_precomp$fam
-  }
-  m <- dat$m
-  g <- dat$g
+  out <- tryCatch({
+    if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
+    if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
+    # pull g_fam and m_fam from dat, if available
+    if ("m_precomp" %in% names(attributes(dat))) {
+      m_precomp <- attr(dat, "m_precomp"); m_fam <- m_precomp$fam
+    }
+    if ("g_precomp" %in% names(attributes(dat))) {
+      g_precomp <- attr(dat, "g_precomp"); g_fam <- g_precomp$fam
+    }
+    m <- dat$m
+    g <- dat$g
 
-  # remove one of the covariates if applicable
-  if (rm_covariate != "") {
-    covariate_matrix <- covariate_matrix |> dplyr::select(-dplyr::all_of(rm_covariate))
-  }
-  # get the Bayes-optimal threshold
-  bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs[1:ncol(covariate_matrix)], g_offset)
-  # threshold the counts
-  phat <- as.integer(g > bdy)
-  # run method with timing
-  time <- system.time({
-  out <- thresholding_method_simulatr_helper(phat, m, pi, covariate_matrix, m_fam, m_offset, alpha)
-  })[["elapsed"]]
-  out <- out %>% dplyr::add_row(.,parameter = "meta", target = "time", value = time)
+    # remove one of the covariates if applicable
+    if (rm_covariate != "") {
+      covariate_matrix <- covariate_matrix |> dplyr::select(-dplyr::all_of(rm_covariate))
+    }
+    # get the Bayes-optimal threshold
+    bdy <- get_optimal_threshold(g_intercept, g_perturbation, g_fam, pi, covariate_matrix, g_covariate_coefs[1:ncol(covariate_matrix)], g_offset)
+    # threshold the counts
+    phat <- as.integer(g > bdy)
+    # run method with timing
+    time <- system.time({
+      out <- thresholding_method_simulatr_helper(phat, m, pi, covariate_matrix, m_fam, m_offset, alpha)
+    })[["elapsed"]]
+    out <- out %>% dplyr::add_row(.,parameter = "meta", target = "time", value = time)
+  }, error = function(e) {
+    out <- tibble::tibble(parameter = "meta", target = "fit_attempted", value = 0)
+    out
+  })
   return(out)
 }
 

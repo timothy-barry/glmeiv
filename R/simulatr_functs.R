@@ -24,7 +24,7 @@
 #' \dontrun{
 #' library(magrittr)
 #' m_fam <- g_fam <- poisson() %>% augment_family_object()
-#' pi <- 0.2; n <- 1000; B <- 5
+#' pi <- 0.2; n <- 5000; B <- 5
 #' m_intercept <- log(0.01); m_perturbation <- log(0.25); g_intercept <- log(0.005); g_perturbation <- log(2.5)
 #' m_offset <- log(rpois(n = n, lambda = 10000)); g_offset <- log(rpois(n = n, lambda = 5000))
 #' # no covariates
@@ -42,16 +42,27 @@
 generate_full_data <- function(m_fam, m_intercept, m_perturbation, g_fam, g_intercept, g_perturbation, pi, n,
                                B, covariate_matrix, m_covariate_coefs, g_covariate_coefs, m_offset, g_offset,
                                run_mrna_unknown_theta_precomputation = FALSE, run_grna_unknown_theta_precomputation = FALSE,
-                               rm_covariate = "") {
+                               rm_covariate = "", mrna_duplet_rate = 0.0, grna_duplet_rate = 0.0) {
   # if m_fam/g_fam in list form, extract
   if (!is(m_fam, "family")) m_fam <- m_fam[[1]]
   if (!is(g_fam, "family")) g_fam <- g_fam[[1]]
 
   # sample a B x n matrix of perturbation indicators
   perturbation_indicators <- matrix(data = stats::rbinom(n = n * B, size = 1, prob = pi), nrow = n, ncol = B)
-  # call above for both m and g
+  # call above for both m and g; perturb grna_duplet_rate of entries
   m_matrix <- generate_glm_data_sim(m_intercept, m_perturbation, perturbation_indicators, m_fam, covariate_matrix, m_covariate_coefs, m_offset, n, B)
+  if (mrna_duplet_rate > 0.0) {
+    n_to_sample <- floor(length(m_matrix) * mrna_duplet_rate)
+    idxs_to_update <- sample(x = seq(1, length(m_matrix)), size = n_to_sample, replace = FALSE)
+    m_matrix[idxs_to_update] <- 2 * m_matrix[idxs_to_update]
+  }
   g_matrix <- generate_glm_data_sim(g_intercept, g_perturbation, perturbation_indicators, g_fam, covariate_matrix, g_covariate_coefs, g_offset, n, B)
+  if (grna_duplet_rate > 0.0) {
+    n_to_sample <- floor(length(g_matrix) * grna_duplet_rate)
+    idxs_to_update <- sample(x = seq(1, length(g_matrix)), size = n_to_sample, replace = FALSE)
+    g_matrix[idxs_to_update] <- 2 * g_matrix[idxs_to_update]
+  }
+
   # Finally, create the data list
   data_list <- sapply(seq(1, B), function(i) {
     df <- data.frame(m = m_matrix[,i], g = g_matrix[,i], p = perturbation_indicators[,i])

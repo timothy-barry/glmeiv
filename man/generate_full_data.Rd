@@ -20,7 +20,10 @@ generate_full_data(
   m_offset,
   g_offset,
   run_mrna_unknown_theta_precomputation = FALSE,
-  run_grna_unknown_theta_precomputation = FALSE
+  run_grna_unknown_theta_precomputation = FALSE,
+  rm_covariate = "",
+  mrna_duplet_rate = 0,
+  grna_duplet_rate = 0
 )
 }
 \arguments{
@@ -64,7 +67,7 @@ Generates B copies of a full GLM-EIV dataset.
 \dontrun{
 library(magrittr)
 m_fam <- g_fam <- poisson() \%>\% augment_family_object()
-pi <- 0.2; n <- 1000; B <- 5
+pi <- 0.2; n <- 5000; B <- 5
 m_intercept <- log(0.01); m_perturbation <- log(0.25); g_intercept <- log(0.005); g_perturbation <- log(2.5)
 m_offset <- log(rpois(n = n, lambda = 10000)); g_offset <- log(rpois(n = n, lambda = 5000))
 # no covariates

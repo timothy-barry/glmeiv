@@ -18,7 +18,8 @@ run_umimodal_mixture_method_simulatr(
   alpha = 0.95,
   n_em_rep = 15,
   pi_guess_range = c(1e-05, 0.03),
-  g_perturbation_guess_range = log(c(0.5, 10))
+  g_perturbation_guess_range = log(c(0.5, 10)),
+  rm_covariate = ""
 )
 }
 \description{
